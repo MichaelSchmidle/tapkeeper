@@ -57,7 +57,8 @@ def main():
             ) as output:
                 output.write(store.export_csv())
         elif args.command in ("import-legacy", "import-v1"):
-            store.import_csv(private_path(args.file).read_text(encoding="utf-8"), now)
+            with private_path(args.file).open(encoding="utf-8", newline="") as source:
+                store.import_csv(source.read(), now)
         elif args.command == "backup":
             store.backup(private_path(args.file))
         elif args.command == "set":

@@ -116,13 +116,13 @@ def application(store, token, request=None):
     async def callback(update, context):
         query = update.callback_query
         message = query.message
-        if message is None or not hasattr(message, "message_thread_id"):
+        if message is None:
             return
         ok = await adapter.callback(
             query.id,
             query.from_user.id,
             message.chat_id,
-            message.message_thread_id,
+            getattr(message, "message_thread_id", None),
             query.data or "",
             datetime.now(timezone.utc),
             message.message_id,
@@ -147,7 +147,8 @@ def application(store, token, request=None):
         ):
             return
         try:
-            name = message.text.split()[0].split("@")[0]
+            parts = message.text.split(maxsplit=3)
+            name = parts[0].split("@")[0]
             if name == "/export":
                 import io
 
@@ -155,9 +156,16 @@ def application(store, token, request=None):
                     document=io.BytesIO(store.export_csv().encode("utf-8")),
                     filename="tapkeeper-v1.csv",
                 )
-            elif name == "/set" and len(context.args) == 3:
+            elif name == "/set" and len(parts) == 4:
+                choice = parts[3]
+                if choice.startswith('"'):
+                    choice = json.loads(choice)
+                    if not isinstance(choice, str):
+                        raise ValueError("Watch ID must be a string")
                 result = store.backfill(
-                    *context.args,
+                    parts[1],
+                    parts[2],
+                    choice,
                     datetime.now(timezone.utc),
                     update_id=update.update_id,
                 )

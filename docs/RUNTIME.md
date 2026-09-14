@@ -79,6 +79,10 @@ use the first occurrence. The machine clock and timezone database must be correc
 
 Telegram owner commands: `/set YYYY-MM-DD morning|evening WATCH_ID|none|same`,
 `/export`, `/help`. `/set` corrects or backfills independently of old bot keyboards.
+The remainder after date and slot is the exact ID, preserving internal/trailing
+spaces: `/set 2026-03-28 morning demo ref`. To preserve leading spaces or an ID
+starting with a double quote, supply a JSON string, for example
+`/set 2026-03-28 morning " demo ref "`; JSON escapes decode only in this quoted form.
 These are owner AND exact chat/topic restricted. Evening same copies the current
 morning snapshot; missing/no-watch morning requires direct selection. A scheduled
 prompt always owns its original local date, with no age expiry. A fresh tap corrects

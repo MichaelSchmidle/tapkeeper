@@ -37,6 +37,11 @@ may have been visible without a returned ID. After retry, the first message must
 remain usable: durable token + configured and stored user/chat/topic authorization
 are authoritative when attempts exceed one. Duplicate messages cannot produce
 multiple current rows. Retired historical offered choices still resolve.
+When Telegram omits topic metadata, recover it only from an exact persisted
+prompt-token/chat/message-ID match on a non-pending prompt. Current owner and
+configuration plus stored destination checks still apply. An unknown message
+(including an unbound uncertain-send duplicate) cannot use this fallback; use
+backfill if its topic metadata is also unavailable.
 
 ## CSV v1 and explicit legacy path
 

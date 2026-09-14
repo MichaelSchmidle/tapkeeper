@@ -219,7 +219,7 @@ class Store:
         return f"Recorded {day} {slot}: {label or 'No watch'}"
 
     def select(self, callback_id, user, chat, topic, data, now, message_id=None):
-        if not self.authorized(user, chat, topic):
+        if (user, chat) != (self.config.user, self.config.chat):
             raise ValueError("Unauthorized")
         if (
             not isinstance(callback_id, str)
@@ -240,6 +240,19 @@ class Store:
             p = self.connection.execute(
                 "SELECT * FROM prompts WHERE id=?", (prompt_id,)
             ).fetchone()
+            # Missing topic metadata is recoverable only from an exact durable
+            # token/chat/message binding, never merely the current configuration.
+            if (
+                p is not None
+                and topic is None
+                and message_id is not None
+                and p["chat"] == chat
+                and p["message_id"] == message_id
+                and p["state"] != "pending"
+            ):
+                topic = p["topic"]
+            if not self.authorized(user, chat, topic):
+                raise ValueError("Unauthorized")
             if p is None or (p["user"], p["chat"], p["topic"]) != (user, chat, topic):
                 raise ValueError("Unknown prompt")
             if message_id is not None and (

@@ -22,6 +22,9 @@ production records, production migration, deployment or release approval are imp
 | SQLite-consistent backup/restore includes prompt and replay state | backup API, integrity/schema check, new destination only | test_backup_restores_prompts_and_callback_identity; test_cli_process_restart_and_backup |
 | CLI is runnable across process boundaries, export/import exact | installed package entrypoint; CLI subprocesses | test_cli_process_restart_and_backup; isolated installed-wheel import smoke |
 | Redacted actionable uncertainty diagnostics | Adapter diagnostic codes; run disables library logging | test_uncertain_send_diagnostics_are_redacted |
+| CLI imports preserve embedded CRLF/CR and export/reimport stays exact | newline-preserving file reads | test_cli_csv_preserves_embedded_line_endings |
+| Missing callback topic requires exact persisted message binding | Store.select and PTB handler | test_missing_topic_requires_exact_persisted_binding |
+| Telegram backfill preserves whitespace-bearing IDs | Raw command tail and optional JSON string | test_backfill_preserves_exact_whitespace_ids |
 
 ## Execution record
 
@@ -43,7 +46,8 @@ uv run --isolated --no-project --with ./dist/tapkeeper-0.1.0-py3-none-any.whl py
 git diff --check
 ```
 
-Full suite: **29 passed** on Python **3.13.13** and **3.12.3**. Ruff clean; source
+Review regressions first reproduced all three requested changes (3 failed, 29 passed).
+Full suite after corrections: **32 passed** on Python **3.13.13** and **3.12.3**. Ruff clean; source
 distribution and wheel built; isolated installed-wheel import printed
 `installed wheel imports OK; PTB 22.8`. No live Telegram acceptance was run.
 Rerun the full suite after corrections and update the evidence when results change.
