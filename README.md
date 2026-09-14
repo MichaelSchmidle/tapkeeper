@@ -5,8 +5,11 @@
 A self-hosted Telegram watch-wear logger: receive a scheduled check-in,
 tap a watch, keep a portable record. Deterministic code, not an AI agent.
 
-**Status: design only.** There is no runnable bot or installation procedure yet.
-The documents distinguish agreed product boundaries from implementation proposals.
+**Status: first runtime slice implemented and tested with synthetic transports.**
+Python 3.12+, pinned python-telegram-bot 22.8 long polling, SQLite and an in-process
+scheduler. Live Telegram acceptance, deployment and migration remain unverified.
+See the [runtime runbook](docs/RUNTIME.md), [schema](docs/SCHEMA.md), and
+[invariant ledger](docs/INVARIANTS.md).
 
 ## Scope
 

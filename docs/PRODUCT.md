@@ -17,9 +17,10 @@ Non-goals: LLMs, dashboards, valuations, social features, subscriptions, generic
 logging frameworks, and rich collection management. Adding a watch need not
 require code changes; a self-service catalogue editor is not a v1 requirement.
 
-## Proposed v1 behavior — review before implementation
+## Approved v1 behavior
 
-These examples define proposed acceptance criteria, not shipped capabilities.
+The first runtime slice implements these criteria with synthetic automated evidence;
+see [the invariant ledger](INVARIANTS.md). The live milestone below is still open.
 
 | Scenario | Expected result |
 | --- | --- |
