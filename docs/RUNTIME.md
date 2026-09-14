@@ -1,7 +1,7 @@
 # First-slice runtime runbook
 
-Only `run` contacts Telegram. All verification so far uses synthetic data and fake
-Telegram requests; the live acceptance gate is **not passed**. Do not deploy,
+Only `run` contacts Telegram. [Partial baseline live evidence](LIVE_ACCEPTANCE.md)
+is separate from synthetic saved-prompt UX tests; the new UI live gate is **not passed**. Do not deploy,
 import production history, or send messages without separate operator permission.
 No Hermes, web server, containers, or external scheduler are required.
 
@@ -90,6 +90,31 @@ that slot; redelivery of the same callback does not change its timestamp. Telegr
 `/set` updates also have durable replay receipts: old redelivery cannot undo a later
 correction. A fresh CLI set intentionally creates a new correction.
 
+## Saved prompt display and recovery
+
+Unanswered prompts show their offered watches, No watch, and evening Same as morning.
+After commit, the tapped message shows `Recorded DATE SLOT: SELECTION` and one
+**Change** button. Change reopens the original offered choices below the current saved
+selection; it does not clear history or reset timestamps. A new choice is a correction.
+No watch is an explicit saved answer. Same as morning remains a recording-time snapshot.
+
+Storage/validation rejection leaves the keyboard untouched and answers with a dismissible
+Telegram alert (`show_alert=True`). Post-commit edit or acknowledgement failures retain
+the answer and emit redacted `prompt-display-unavailable` or
+`callback-confirmation-unavailable` diagnostics, never a false write-failure alert.
+Telegram's “message is not modified” edit response is treated as an already-correct view.
+If a display is stale, retry a callback or use Change; replay projects **current** history,
+not an old receipt. Restart needs no UI migration; the next interaction reconstructs
+from durable records. Newly sent/retried prompts also reflect any existing saved answer.
+
+Telegram `/set` best-effort updates the one known persisted prompt message in its original,
+still-authorized destination, including on replay after a later correction. Offline CLI
+`set` deliberately remains network-free: it does not immediately edit existing messages.
+Those messages catch up on interaction; restart does not bulk-edit all historical prompts.
+Only the tapped message is edited for callbacks. Uncertain-send duplicates may therefore
+show different displays until tapped; no message registry, background repair queue or
+schema expansion is introduced. All duplicates still share one current record.
+
 ## Uncertainty and reconciliation
 
 Before every send the transaction stores `uncertain`, increments attempts, and stores
@@ -120,7 +145,8 @@ attempts. For destination mismatch, restore intended configuration or stop and
 reconcile/backfill privately; old catalogue is never sent to a new destination.
 For storage failures, check permissions, disk and backup integrity before retrying;
 never infer success from a running process. Confirmation failure after commit leaves
-history durable; retrying the same callback returns its original response safely.
+history durable; replay preserves the original receipt internally but displays the
+current saved selection, including later corrections.
 
 ## Release and upgrade
 

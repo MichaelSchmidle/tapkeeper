@@ -1,7 +1,8 @@
 # First-slice invariant ledger
 
-Evidence is synthetic and local to the first-slice worktree. No live bot calls,
-production records, production migration, deployment or release approval are implied.
+Saved-prompt evidence is synthetic and local to this worktree. See
+[partial baseline live evidence](LIVE_ACCEPTANCE.md) for earlier runtime observations;
+new UI live acceptance, migration, deployment and release approval are not implied.
 
 | Invariant | Implementation boundary | Regression evidence |
 | --- | --- | --- |
@@ -25,6 +26,26 @@ production records, production migration, deployment or release approval are imp
 | CLI imports preserve embedded CRLF/CR and export/reimport stays exact | newline-preserving file reads | test_cli_csv_preserves_embedded_line_endings |
 | Missing callback topic requires exact persisted message binding | Store.select and PTB handler | test_missing_topic_requires_exact_persisted_binding |
 | Telegram backfill preserves whitespace-bearing IDs | Raw command tail and optional JSON string | test_backfill_preserves_exact_whitespace_ids |
+
+## Saved-prompt UX regressions
+
+| Invariant | Regression evidence (`tests/test_saved_prompt.py`) |
+| --- | --- |
+| Change is read-only, keeps saved context and timestamps; restart/replay renders current history while receipts remain original | test_saved_change_replay_restart_projection |
+| Change requires exact owner/destination and durable missing-topic fallback binding | test_change_authorization_and_topic_binding |
+| Failed writes leave choices and show an alert, never saved feedback | test_failed_write_keeps_choices_and_alerts; test_dispatch_change_alert_and_set_reconciliation |
+| A second connection sees the committed record before edit; failed edit does not become a failed save | test_edit_failure_is_not_write_failure_and_replay_repairs |
+| Real PTB edit/alert dispatch; not-modified is benign; network failures retain history | test_dispatch_change_alert_and_set_reconciliation; test_transport_edit_noop_and_network_failure |
+| Same-as-morning projection remains a snapshot; sending after offline backfill uses saved state | test_same_snapshot_and_send_after_offline_backfill |
+| /set replay projects current history; post-commit projection read failure does not report a failed write | test_set_replay_and_postcommit_projection_failure |
+
+RED evidence: new UX tests first produced **6 failures** before implementation. A later
+focused post-commit `/set` read-failure regression also failed before its boundary fix.
+GREEN: `uv run --frozen pytest` and `uv run --frozen --python 3.12 pytest`
+each passed **40 tests**, on Python **3.13.13** and **3.12.3** respectively.
+`uv run --frozen ruff check tapkeeper tests` and `git diff --check` passed.
+The older build/wheel execution record below belongs to the baseline, not this UX slice.
+New UI live acceptance remains pending; see [baseline evidence](LIVE_ACCEPTANCE.md).
 
 ## Execution record
 

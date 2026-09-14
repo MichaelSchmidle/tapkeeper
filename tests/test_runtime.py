@@ -22,6 +22,12 @@ class Fake:
             raise TimeoutError()
         return len(self.sent)
 
+    async def edit(self, message_id, text, buttons):
+        pass
+
+    async def alert(self, callback, text):
+        pass
+
     async def confirm(self, callback, text):
         if self.fail_confirm:
             raise TimeoutError()

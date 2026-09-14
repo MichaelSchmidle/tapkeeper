@@ -1,9 +1,11 @@
 # Operations and migration
 
-**Status: runtime slice tested synthetically; release gate remains open.**
+**Status: partial live baseline acceptance completed; release gate remains open.**
 [Runtime commands and reconciliation](RUNTIME.md) and [schema/interchange](SCHEMA.md)
-are implemented. No live Telegram test, deployment or production migration has
-been performed. The release requirements below still apply.
+are implemented. [Live acceptance evidence](LIVE_ACCEPTANCE.md) records the isolated
+private-chat exercise and distinguishes it from the new UI's pending live checks.
+No production deployment or migration has been performed. The release requirements
+below still apply.
 
 ## Ownership and maintenance
 
