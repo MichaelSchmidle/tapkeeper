@@ -31,7 +31,10 @@ backfill use BEGIN IMMEDIATE, rollback on failure, and SQLite durable commit bef
 confirmation. Prompts and replay rows have no automatic retention expiry.
 
 Callback payload is `opaque_prompt_id:choice_index` (or `:none`, `:same`), never a
-watch ID. Persisted offered order resolves indices; Unicode/long IDs remain exact.
+watch ID. `opaque_prompt_id:change` is an authenticated read-only UI operation,
+with the same destination/message binding and no receipt or record writes.
+Original selection receipts remain unchanged; UI projections read current records,
+not receipt text. There is no schema change or persisted keyboard-open state. Persisted offered order resolves indices; Unicode/long IDs remain exact.
 Known, single-attempt successful sends bind the message ID too. An uncertain send
 may have been visible without a returned ID. After retry, the first message must
 remain usable: durable token + configured and stored user/chat/topic authorization

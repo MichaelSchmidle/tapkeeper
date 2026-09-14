@@ -218,7 +218,8 @@ class Store:
         )
         return f"Recorded {day} {slot}: {label or 'No watch'}"
 
-    def select(self, callback_id, user, chat, topic, data, now, message_id=None):
+    def callback_prompt(self, callback_id, user, chat, topic, data, message_id=None):
+        """Read-only callback authorization, shared by selection and Change."""
         if (user, chat) != (self.config.user, self.config.chat):
             raise ValueError("Unauthorized")
         if (
@@ -233,37 +234,49 @@ class Store:
         if len(parts) != 2:
             raise ValueError("Invalid selection")
         prompt_id, choice = parts
-        callback_id = f"callback:{callback_id}"
+        p = self.connection.execute(
+            "SELECT * FROM prompts WHERE id=?", (prompt_id,)
+        ).fetchone()
+        # Missing topic metadata is recoverable only from an exact durable
+        # token/chat/message binding, never merely the current configuration.
+        if (
+            p is not None
+            and topic is None
+            and message_id is not None
+            and p["chat"] == chat
+            and p["message_id"] == message_id
+            and p["state"] != "pending"
+        ):
+            topic = p["topic"]
+        if not self.authorized(user, chat, topic):
+            raise ValueError("Unauthorized")
+        if p is None or (p["user"], p["chat"], p["topic"]) != (user, chat, topic):
+            raise ValueError("Unknown prompt")
+        if message_id is not None and (
+            p["state"] == "pending"
+            or (
+                p["attempts"] == 1
+                and p["message_id"] is not None
+                and p["message_id"] != message_id
+            )
+        ):
+            raise ValueError("Wrong prompt message")
+        return dict(p), choice
+
+    def record(self, day, slot):
+        row = self.connection.execute(
+            "SELECT * FROM records WHERE date=? AND slot=?", (day, slot)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def select(self, callback_id, user, chat, topic, data, now, message_id=None):
         # IMMEDIATE prevents competing read/modify/write transactions.
         with self.connection:
             self.connection.execute("BEGIN IMMEDIATE")
-            p = self.connection.execute(
-                "SELECT * FROM prompts WHERE id=?", (prompt_id,)
-            ).fetchone()
-            # Missing topic metadata is recoverable only from an exact durable
-            # token/chat/message binding, never merely the current configuration.
-            if (
-                p is not None
-                and topic is None
-                and message_id is not None
-                and p["chat"] == chat
-                and p["message_id"] == message_id
-                and p["state"] != "pending"
-            ):
-                topic = p["topic"]
-            if not self.authorized(user, chat, topic):
-                raise ValueError("Unauthorized")
-            if p is None or (p["user"], p["chat"], p["topic"]) != (user, chat, topic):
-                raise ValueError("Unknown prompt")
-            if message_id is not None and (
-                p["state"] == "pending"
-                or (
-                    p["attempts"] == 1
-                    and p["message_id"] is not None
-                    and p["message_id"] != message_id
-                )
-            ):
-                raise ValueError("Wrong prompt message")
+            p, choice = self.callback_prompt(
+                callback_id, user, chat, topic, data, message_id
+            )
+            callback_id = f"callback:{callback_id}"
             choices = list(json.loads(p["choices"]))
             if choice not in ("same", "none"):
                 if (

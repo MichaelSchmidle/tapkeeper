@@ -20,12 +20,14 @@ require code changes; a self-service catalogue editor is not a v1 requirement.
 ## Approved v1 behavior
 
 The first runtime slice implements these criteria with synthetic automated evidence;
-see [the invariant ledger](INVARIANTS.md). The live milestone below is still open.
+see [the invariant ledger](INVARIANTS.md). [Partial baseline live evidence](LIVE_ACCEPTANCE.md)
+does not close the saved-prompt UX live milestone below.
 
 | Scenario | Expected result |
 | --- | --- |
 | Morning or evening check-in | Show selectable active watches and “No watch” directly in the message. |
-| Authorized owner selects a watch | Save for the prompt's local date and slot; confirm the saved selection. |
+| Authorized owner selects a watch | Commit for the prompt's local date and slot, then edit the tapped message to date/slot and saved selection with one Change button. |
+| Owner taps Change | Reopen the offered choices with current saved context; do not change the answer, timestamp or replay history. |
 | Owner chooses “No watch” | Save an explicit answer, distinct from no response. |
 | Owner does not answer | Do not infer a watch or create a “No watch” record. |
 | Evening “Same as morning” | Copy that date's current morning watch into evening; if absent or “No watch”, ask for a direct selection. |
@@ -37,7 +39,8 @@ see [the invariant ledger](INVARIANTS.md). The live milestone below is still ope
 | Future date or malformed selection | Reject without changing history. |
 | Someone else taps in a shared topic | Reject without changing or disclosing private history. |
 | Watch is retired from selection | Retain its identity and history; do not recycle its ID. |
-| Storage fails | Do not claim “recorded”; report failure and allow retry. |
+| Storage fails | Leave choices unchanged; show a dismissible Telegram error alert and allow retry. |
+| Telegram edit/confirmation fails after commit | Keep the saved answer; never call it a failed write. A later tap projects current history. |
 
 A new bot does not inherit the old bot's buttons. Migration must provide a
 backfill route independent of those old messages.

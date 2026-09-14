@@ -17,6 +17,9 @@ Pinned versions and fake-library lifecycle evidence are recorded in INVARIANTS.m
 Keep Telegram handling, domain operations and persistence separate enough to test
 without the network; do not introduce a plugin framework. Persist prompt identity
 and delivery state so callbacks and scheduling do not depend on process memory.
+Saved-prompt text and keyboards are projections of current records and offered
+choices; Change shares callback authorization but writes no history. The adapter
+edits only after commit, isolating display failures from storage failures.
 
 SQLite provides transactions and uniqueness constraints; CSV remains a
 portable interchange format. Private configuration and database files live outside
