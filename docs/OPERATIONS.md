@@ -1,8 +1,9 @@
 # Operations and migration
 
-**Status: release requirements, not an executable runbook.** No deployment has
-been created. Exact commands, supported versions, paths and recovery steps must
-be supplied and exercised before the first release.
+**Status: runtime slice tested synthetically; release gate remains open.**
+[Runtime commands and reconciliation](RUNTIME.md) and [schema/interchange](SCHEMA.md)
+are implemented. No live Telegram test, deployment or production migration has
+been performed. The release requirements below still apply.
 
 ## Ownership and maintenance
 

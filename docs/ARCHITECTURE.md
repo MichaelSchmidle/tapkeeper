@@ -1,31 +1,32 @@
 # Architecture and data
 
-**Status:** product boundaries are agreed in [PRODUCT.md](PRODUCT.md).
-Technology and detailed behavior below are proposals for review, not implemented
-or benchmarked decisions. Schema is independent of storage and export format.
+**Status:** first runtime slice implements the approved Python/SQLite/long-polling
+baseline. [SCHEMA.md](SCHEMA.md) specifies the actual schema and
+[INVARIANTS.md](INVARIANTS.md) identifies synthetic evidence and open live gates.
+The logical model below is design context, not the SQL table definition.
 
-## Smallest proposed runtime
+## Implemented runtime baseline
 
 One supervised Python process, a pinned Telegram bot library
-(`python-telegram-bot` is the initial candidate), local SQLite storage and a
+(`python-telegram-bot==22.8`), local SQLite storage and a
 local-time scheduler. Use long polling initially: no public inbound web endpoint.
 No Hermes imports or reliance on its gateway/scheduler; no LLM, database server
 or message broker.
-Select supported versions and validate library lifecycle behavior during implementation.
+Pinned versions and fake-library lifecycle evidence are recorded in INVARIANTS.md.
 
 Keep Telegram handling, domain operations and persistence separate enough to test
 without the network; do not introduce a plugin framework. Persist prompt identity
 and delivery state so callbacks and scheduling do not depend on process memory.
 
-SQLite is proposed for transactions and uniqueness constraints; CSV remains a
+SQLite provides transactions and uniqueness constraints; CSV remains a
 portable interchange format. Private configuration and database files live outside
-the source tree. Container packaging is a candidate, not yet a supported install path.
+the source tree. Containers are outside this approved slice; use a Python environment directly.
 
 ## Logical data model
 
 | Entity | Minimum meaning |
 | --- | --- |
-| Watch | Stable ID, brand, reference, display label, active/retired state. |
+| Watch | Stable ID, display label, active/retired state. Richer brand/reference metadata remains external; IDs are never parsed or normalized. |
 | Wear record | Local date, morning/evening slot, watch ID or explicit no-watch answer, recording timestamp and source. |
 | Prompt | Durable identity bound to date, slot, destination and delivery state. |
 | Processed update | Durable replay identity sufficient to make repeated Telegram delivery harmless. |
@@ -74,14 +75,15 @@ Authorize both the configured Telegram user and destination. A group membership
 check alone is not authorization. Treat callback data as untrusted and bind it
 to a known prompt. Secrets must never appear in logs or error messages.
 
-Proposed scheduling policy: one logical prompt per date/slot; on restart send
+Implemented scheduling policy: one logical prompt per date/slot; on restart send
 missed prompts for the current local day only, with their intended date/slot.
 Older days remain available through backfill, without a catch-up message flood.
 For a DST gap, use the next valid local time; for an overlap, use the first occurrence.
-Test these policies before claiming support.
+Synthetic policy regressions pass; the live gate remains open.
 
 Telegram send and local commit cannot be one transaction. A send timeout can
 leave delivery uncertain; do not promise exactly-once visible messages. Record
 uncertainty, bound retries, and ensure duplicate visible prompts cannot corrupt
-or duplicate wear records. Final retry/reconciliation mechanics need a focused
-implementation decision and failure tests.
+or duplicate wear records. Implemented policy: commit uncertainty before each
+send; at most three attempts at least 60 seconds apart, current-day only.
+Operator reconciliation never resets this cap; see [RUNTIME.md](RUNTIME.md).
