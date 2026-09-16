@@ -47,6 +47,25 @@ each passed **40 tests**, on Python **3.13.13** and **3.12.3** respectively.
 The older build/wheel execution record below belongs to the baseline, not this UX slice.
 New UI live acceptance remains pending; see [baseline evidence](LIVE_ACCEPTANCE.md).
 
+## Error feedback and authorization evidence
+
+`tests/test_safety.py` exercises the real PTB dispatcher with fake HTTP and seeded,
+isolated SQLite data. This is automated boundary evidence, not live Telegram
+acceptance or permission to deploy.
+
+| Invariant | Regression |
+| --- | --- |
+| Storage failure has short retry/storage advice; unavailable “Same as morning” has quoted, direct-selection advice; invalid/unauthorized callbacks disclose no history or raw exception | test_error_copy_distinguishes_storage_domain_and_invalid_selection |
+| A storage failure after resolving “Same as morning” is still a storage error, with no record or receipt committed | test_storage_failure_after_same_resolution_is_not_domain_advice |
+| After store/dispatcher restart, wrong user/chat/topic cannot mutate seeded history, replay a receipt, reopen saved choices, or export; missing command user/topic is rejected; authorized controls still work | test_seeded_history_and_replay_are_private_after_restart |
+| Both old and newly configured identities are rejected on an old prompt after owner/chat/topic changes; records, prompts and receipts remain unchanged | test_reconfigured_identity_cannot_reopen_or_replay_old_prompt |
+
+The copy assertions failed against the unchanged runtime at `f8fdd2a` before the
+fix. These failures reproduce misleading feedback, **not an authorization bypass**.
+Authorization rules and schema are unchanged. Callbacks retain dismissible alerts;
+commands from unauthorized destinations remain silent. A missing callback topic
+still requires the exact stored message binding; commands have no such fallback.
+
 ## Execution record
 
 RED before implementation: `python3 -m unittest discover -s tests -v` failed with

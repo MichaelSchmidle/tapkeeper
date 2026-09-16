@@ -7,7 +7,7 @@ import sys
 
 from datetime import datetime, timezone
 
-from .core import SLOTS, due_time, local_date
+from .core import SLOTS, SameAsMorningUnavailable, due_time, local_date
 
 
 def diagnostic(code):
@@ -90,12 +90,16 @@ class Adapter:
         except (ValueError, sqlite3.Error) as error:
             if isinstance(error, sqlite3.Error):
                 diagnostic("callback-storage-failure: no success confirmed")
-            try:
-                await self.transport.alert(
-                    callback_id,
-                    "Not recorded. Retry; if Same as morning is unavailable, "
-                    "select a watch directly. Check storage if this persists.",
+                text = "Not recorded. Please retry. If this persists, check storage."
+            elif isinstance(error, SameAsMorningUnavailable):
+                text = (
+                    '"Same as morning" is unavailable. Please select a watch directly.'
                 )
+            else:
+                # Do not disclose prompt existence, saved history or raw error details.
+                text = "Cannot use this selection. Use an authorized check-in or /set."
+            try:
+                await self.transport.alert(callback_id, text)
             except Exception:
                 pass
             return False
