@@ -94,6 +94,10 @@ class Config:
         )
 
 
+class SameAsMorningUnavailable(ValueError):
+    """The authorized selection has no usable morning watch to copy."""
+
+
 class Store:
     def __init__(self, path, config):
         self.path = Path(path)
@@ -201,7 +205,7 @@ class Store:
                 (day,),
             ).fetchone()
             if slot != "evening" or row is None or not row["watch_id"]:
-                raise ValueError("Select directly: no morning watch")
+                raise SameAsMorningUnavailable("Select directly: no morning watch")
             key, label = row
         elif choice == "none":
             key, label = "", ""
