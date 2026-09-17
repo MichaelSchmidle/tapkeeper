@@ -23,7 +23,8 @@ edits only after commit, isolating display failures from storage failures.
 
 SQLite provides transactions and uniqueness constraints; CSV remains a
 portable interchange format. Private configuration and database files live outside
-the source tree. Containers are outside this approved slice; use a Python environment directly.
+the source tree. The maintained [container packaging](CONTAINERS.md) adds a non-root
+image and Compose operating path; direct Python operation remains supported.
 
 ## Logical data model
 

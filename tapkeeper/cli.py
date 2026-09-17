@@ -18,6 +18,18 @@ def private_path(value):
     return path
 
 
+def load_token():
+    token = os.environ.get("TAPKEEPER_TOKEN")
+    token_file = os.environ.get("TAPKEEPER_TOKEN_FILE")
+    if token is not None and token_file is not None:
+        raise ValueError("Configure exactly one token source")
+    if token_file is not None:
+        token = private_path(token_file).read_text(encoding="utf-8").strip()
+    if not token or not token.strip():
+        raise ValueError("Token is required")
+    return token
+
+
 def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
@@ -50,7 +62,7 @@ def main():
 
             # No library/network exception logging: URLs may contain bot credentials.
             logging.disable(logging.CRITICAL)
-            run(store, os.environ["TAPKEEPER_TOKEN"])
+            run(store, load_token())
         elif args.command == "export":
             with private_path(args.file).open(
                 "x", encoding="utf-8", newline=""

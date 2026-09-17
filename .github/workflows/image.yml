@@ -1,0 +1,48 @@
+name: Container image
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          python-version: '3.13'
+      - name: Test release candidate
+        run: |
+          uv sync --frozen
+          uv run --frozen pytest
+          uv run --frozen ruff check .
+          uv run --frozen ruff format --check .
+      - name: Build and check image
+        run: |
+          docker build --tag tapkeeper:check .
+          docker run --rm --network none --read-only tapkeeper:check --help
+      - name: Publish owner-tagged version
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ github.sha }}
+        run: |
+          set -eu
+          image="ghcr.io/${REPOSITORY,,}"
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker tag tapkeeper:check "$image:$VERSION"
+          docker tag tapkeeper:check "$image:sha-$REVISION"
+          docker push "$image:$VERSION"
+          docker push "$image:sha-$REVISION"

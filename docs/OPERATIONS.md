@@ -20,6 +20,11 @@ Dependency/security updates, backup checks and occasional Telegram API changes
 remain work even without Hermes. If maintenance outweighs its usefulness, stop
 scheduling, export the history, and retire the service without data lock-in.
 
+## Container packaging
+
+See [the container runbook](CONTAINERS.md) for the maintained image and Stacksmith
+Compose path. Packaging does not install backup scheduling or close cutover gates.
+
 ## Deployment requirements
 
 - Dedicated bot token, one authorized owner ID, configured chat and optional topic.
