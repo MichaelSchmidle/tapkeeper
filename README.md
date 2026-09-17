@@ -24,6 +24,11 @@ The software and schema are public; credentials, watch lists and wear history ar
 Telegram still processes bot messages: self-hosted does not mean Telegram-free or
 end-to-end encrypted bot conversations.
 
+## Container packaging
+
+Build/release and non-root operation are documented in [CONTAINERS.md](docs/CONTAINERS.md).
+PR builds do not publish images; owner-authorized release and deployment remain separate.
+
 ## Project documents
 
 - [Product and acceptance contract](docs/PRODUCT.md)
