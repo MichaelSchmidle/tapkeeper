@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule Tapkeeper backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Europe/Zurich
+Persistent=true
+AccuracySec=1s
+Unit=tapkeeper-backup@backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule Tapkeeper fullcheck
+
+[Timer]
+OnCalendar=*-*-01 07:00:00 Europe/Zurich
+Persistent=true
+AccuracySec=1s
+Unit=tapkeeper-backup@fullcheck.service
+
+[Install]
+WantedBy=timers.target

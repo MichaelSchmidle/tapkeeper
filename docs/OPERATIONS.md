@@ -23,7 +23,8 @@ scheduling, export the history, and retire the service without data lock-in.
 ## Container packaging
 
 See [the container runbook](CONTAINERS.md) for the maintained image and Stacksmith
-Compose path. Packaging does not install backup scheduling or close cutover gates.
+Compose path. The optional [host backup operator](BACKUPS.md) provides Restic
+scheduling and integrity checks. Neither packaging nor installation closes cutover gates.
 
 ## Deployment requirements
 
