@@ -54,7 +54,9 @@ active storage. Keep Telegram disabled (`--network none`, offline command) throu
 rehearsal. Compare full tables including prompt and replay state as well as CSV.
 Back up the matching JSON and token separately and encrypt off-host copies. Schedule
 backups using the operator's existing backup system; no backup scheduler is installed
-by this image. Agree retention, recovery point/time and backup ownership before cutover.
+by this image. An optional reviewed [host-side Restic operator](BACKUPS.md) supplies
+scheduling, retention and monitored integrity checks. Agree recovery point/time and
+backup ownership before cutover; do not enable timers before a restore rehearsal.
 
 Stop the poller before switching database/configuration or rollback. Preserve newer
 writes separately; an older snapshot loses changes after its recovery point. A code
