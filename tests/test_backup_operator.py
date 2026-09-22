@@ -1,8 +1,10 @@
 """Safety boundaries for the host-side backup operator."""
 
 import importlib.util
+from io import StringIO
 from pathlib import Path
 from unittest.mock import Mock
+from urllib.parse import parse_qsl, urlsplit
 
 import pytest
 
@@ -111,6 +113,50 @@ def test_check_does_not_renew_backup_heartbeat(monkeypatch):
     monkeypatch.setattr(backup, "heartbeat", heartbeat)
     assert backup.main(["--config", "unused", "check"]) == 0
     heartbeat.assert_called_once_with("check", True)
+
+
+@pytest.mark.parametrize("fragment", ["", "#fragment"])
+@pytest.mark.parametrize("success", [True, False])
+@pytest.mark.parametrize(
+    "query",
+    [
+        "",
+        "?status=up&msg=OK&ping=",
+        "?status=down&status=up&msg=old&msg=older&ping=",
+        "?token=a%2Bb%26c&tag=one&tag=two&empty=&status=down&msg=old",
+    ],
+)
+def test_heartbeat_replaces_status_and_preserves_other_parameters(
+    monkeypatch, success, query, fragment
+):
+    url = "https://monitor.example/api/push/synthetic" + query + fragment
+    opener = Mock(return_value=StringIO('{"ok":true}'))
+    monkeypatch.setattr(backup, "urlopen", opener)
+
+    backup.heartbeat(url, success)
+
+    opener.assert_called_once()
+    assert opener.call_args.kwargs == {"timeout": 20}
+    sent = urlsplit(opener.call_args.args[0])
+    original = urlsplit(url)
+    assert (sent.scheme, sent.netloc, sent.path, sent.fragment) == (
+        original.scheme,
+        original.netloc,
+        original.path,
+        original.fragment,
+    )
+    parameters = parse_qsl(sent.query, keep_blank_values=True)
+    assert [value for key, value in parameters if key == "status"] == [
+        "up" if success else "down"
+    ]
+    assert [value for key, value in parameters if key == "msg"] == [
+        "OK" if success else "Backup operation failed"
+    ]
+    assert [pair for pair in parameters if pair[0] not in ("status", "msg")] == [
+        pair
+        for pair in parse_qsl(original.query, keep_blank_values=True)
+        if pair[0] not in ("status", "msg")
+    ]
 
 
 def test_overlap_fails_before_work(tmp_path, monkeypatch):

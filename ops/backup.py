@@ -13,7 +13,7 @@ import signal
 import subprocess
 import sys
 import tempfile
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import urlopen
 import uuid
 
@@ -222,16 +222,21 @@ def operate(cfg, config_path, mode):
 def heartbeat(url, success):
     if not url:
         return
-    separator = "&" if "?" in url else "?"
+    parts = urlsplit(url)
+    # Generated push URLs already carry status/msg; send exactly one of each.
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        if key not in ("status", "msg")
+    ]
+    query.extend(
+        [
+            ("status", "up" if success else "down"),
+            ("msg", "OK" if success else "Backup operation failed"),
+        ]
+    )
     with urlopen(
-        url
-        + separator
-        + urlencode(
-            {
-                "status": "up" if success else "down",
-                "msg": "OK" if success else "Backup operation failed",
-            }
-        ),
+        urlunsplit(parts._replace(query=urlencode(query))),
         timeout=20,
     ) as response:
         body = json.load(response)
