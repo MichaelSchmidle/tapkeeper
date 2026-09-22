@@ -47,3 +47,7 @@ the saved-state/Change-button interaction and dismissible failure alerts.
   and rollback, cutover and release authorization remain operations gates.
 
 This is bounded acceptance evidence, not a production-readiness claim.
+
+Configuration update note: the group/topic coverage mentioned above describes that
+historical baseline. Current configuration permits private 1:1 chats only; no new
+live acceptance, deployment or migration is claimed by this change.

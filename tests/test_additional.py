@@ -24,7 +24,7 @@ class Additional(Fixture):
         await self.app.tick(NOW + timedelta(minutes=2))
         self.assertTrue(
             await self.app.callback(
-                "first-visible", 1, 2, 3, first_data, NOW, message_id=1
+                "first-visible", 1, 1, None, first_data, NOW, message_id=1
             )
         )
         self.assertEqual(len(self.db.records()), 1)
@@ -47,8 +47,7 @@ class Additional(Fixture):
                                 "is_bot": False,
                                 "first_name": "Synthetic",
                             },
-                            "chat": {"id": 2, "type": "supergroup"},
-                            "message_thread_id": 3,
+                            "chat": {"id": 1, "type": "private"},
                             "text": text,
                             "entities": [
                                 {"type": "bot_command", "offset": 0, "length": 4}
@@ -103,8 +102,7 @@ class Additional(Fixture):
                                 "is_bot": False,
                                 "first_name": "Synthetic",
                             },
-                            "chat": {"id": 2, "type": "supergroup"},
-                            "message_thread_id": 3,
+                            "chat": {"id": 1, "type": "private"},
                             "text": text,
                             "entities": [
                                 {
@@ -139,7 +137,7 @@ class Additional(Fixture):
         Store.restore(backup, restored)
         restored_db = Store(restored, self.cfg)
         try:
-            restored_db.select("a", 1, 2, 3, prompt + ":0", NOW)
+            restored_db.select("a", 1, 1, None, prompt + ":0", NOW)
             self.assertEqual(restored_db.export_csv(), original)
             self.assertEqual(
                 restored_db.prompt("2026-03-29", "morning")["state"], "sent"
@@ -233,7 +231,7 @@ os._exit(23)
     def test_config_invalid_inputs(self):
         for values in (
             {"morning": "24:00"},
-            {"topic": 0},
+            {"chat": -1},
             {"user": True},
             {"watches": {}},
             {"watches": {"   ": "Invalid"}},

@@ -29,7 +29,7 @@ class Adapter:
             if (prompt["user"], prompt["chat"], prompt["topic"]) != (
                 config.user,
                 config.chat,
-                config.topic,
+                None,
             ):
                 diagnostic("destination-mismatch: prompt suppressed")
                 continue
@@ -129,7 +129,6 @@ class TelegramTransport:
 
         message = await self.bot.send_message(
             chat_id=self.config.chat,
-            message_thread_id=self.config.topic,
             text=text,
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -185,7 +184,7 @@ def application(store, token, request=None):
     async def callback(update, context):
         query = update.callback_query
         message = query.message
-        if message is None:
+        if message is None or message.chat.type != "private":
             return
         await adapter.callback(
             query.id,
@@ -201,6 +200,7 @@ def application(store, token, request=None):
         message = update.effective_message
         if (
             message is None
+            or message.chat.type != "private"
             or update.effective_user is None
             or not store.authorized(
                 update.effective_user.id, message.chat_id, message.message_thread_id

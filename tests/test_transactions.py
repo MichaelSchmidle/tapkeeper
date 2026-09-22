@@ -19,8 +19,8 @@ class Transactions(Fixture):
                 return store.select(
                     f"concurrent-{index}",
                     1,
-                    2,
-                    3,
+                    1,
+                    None,
                     f"{prompt['id']}:{index}",
                     NOW,
                 )
@@ -40,7 +40,7 @@ class Transactions(Fixture):
         before = self.db.export_csv()
         for index in (0, 1):
             reply = self.db.select(
-                f"concurrent-{index}", 1, 2, 3, f"{prompt['id']}:{index}", NOW
+                f"concurrent-{index}", 1, 1, None, f"{prompt['id']}:{index}", NOW
             )
             self.assertEqual(reply, replies[index])
         self.assertEqual(self.db.export_csv(), before)

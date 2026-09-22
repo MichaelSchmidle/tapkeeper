@@ -3,6 +3,7 @@
 import csv
 import io
 import json
+import os
 import re
 import sqlite3
 import uuid
@@ -44,7 +45,6 @@ def due_time(day, clock, zone):
 class Config:
     user: int
     chat: int
-    topic: int | None
     timezone: str
     morning: str
     evening: str
@@ -55,14 +55,12 @@ class Config:
             type(self.user) is not int
             or self.user <= 0
             or type(self.chat) is not int
-            or self.chat == 0
+            or self.chat != self.user
         ):
             raise ValueError("Invalid destination")
-        if self.topic is not None and (type(self.topic) is not int or self.topic <= 0):
-            raise ValueError("Invalid topic")
         ZoneInfo(self.timezone)
         for clock in (self.morning, self.evening):
-            if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", clock):
+            if not re.fullmatch(r"(?:[01][0-9]|2[0-3]):[0-5][0-9]", clock):
                 raise ValueError("Invalid clock")
         if not isinstance(self.watches, dict) or not self.watches:
             raise ValueError("Empty catalogue")
@@ -87,10 +85,31 @@ class Config:
                 result[key] = value
             return result
 
+        catalogue = json.loads(
+            Path(path).read_text(encoding="utf-8"), object_pairs_hook=unique_pairs
+        )
+        if not isinstance(catalogue, dict) or set(catalogue) != {"watches"}:
+            raise ValueError("JSON must contain only watches")
+
+        def required(name):
+            value = os.environ.get(name)
+            if not value:
+                raise ValueError(f"Missing {name}")
+            return value
+
+        def identity(name):
+            value = required(name)
+            if not re.fullmatch(r"[1-9][0-9]*", value):
+                raise ValueError(f"Invalid {name}")
+            return int(value)
+
         return cls(
-            **json.loads(
-                Path(path).read_text(encoding="utf-8"), object_pairs_hook=unique_pairs
-            )
+            user=identity("TAPKEEPER_USER_ID"),
+            chat=identity("TAPKEEPER_CHAT_ID"),
+            timezone=required("TZ"),
+            morning=required("TAPKEEPER_MORNING"),
+            evening=required("TAPKEEPER_EVENING"),
+            watches=catalogue["watches"],
         )
 
 
@@ -144,7 +163,7 @@ class Store:
         return (user, chat, topic) == (
             self.config.user,
             self.config.chat,
-            self.config.topic,
+            None,
         )
 
     def prompt(self, day, slot):
@@ -163,7 +182,7 @@ class Store:
                     slot,
                     self.config.user,
                     self.config.chat,
-                    self.config.topic,
+                    None,
                     json.dumps(self.config.watches),
                     "pending",
                 ),
@@ -241,17 +260,6 @@ class Store:
         p = self.connection.execute(
             "SELECT * FROM prompts WHERE id=?", (prompt_id,)
         ).fetchone()
-        # Missing topic metadata is recoverable only from an exact durable
-        # token/chat/message binding, never merely the current configuration.
-        if (
-            p is not None
-            and topic is None
-            and message_id is not None
-            and p["chat"] == chat
-            and p["message_id"] == message_id
-            and p["state"] != "pending"
-        ):
-            topic = p["topic"]
         if not self.authorized(user, chat, topic):
             raise ValueError("Unauthorized")
         if p is None or (p["user"], p["chat"], p["topic"]) != (user, chat, topic):

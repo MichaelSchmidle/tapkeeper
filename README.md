@@ -15,7 +15,7 @@ See the [runtime runbook](docs/RUNTIME.md), [schema](docs/SCHEMA.md), and
 
 ## Scope
 
-- One collector per deployment, with a dedicated Telegram bot and authorized user.
+- One collector per deployment, with a dedicated Telegram bot and one private 1:1 chat.
 - Morning/evening check-ins, corrections and backfill, and import/export of history.
 - Configurable watch catalogue, prompt times, timezone, and delivery destination.
 - No Hermes runtime dependency, hosted multi-user service, or collection-management platform.

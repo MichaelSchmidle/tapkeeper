@@ -185,6 +185,7 @@ def config(tmp_path):
         "password_file": str(tmp_path / "password"),
         "data_dir": str(tmp_path / "data"),
         "app_config": str(tmp_path / "app.json"),
+        "env_file": str(tmp_path / "settings.env"),
         "token_file": str(tmp_path / "token"),
         "stage_dir": str(tmp_path / "stage"),
         "lock_file": str(tmp_path / "lock"),
@@ -193,6 +194,10 @@ def config(tmp_path):
     Path(cfg["stage_dir"]).mkdir()
     Path(cfg["data_dir"]).mkdir()
     Path(cfg["app_config"]).write_text("{}")
+    Path(cfg["env_file"]).write_text(
+        "TAPKEEPER_USER_ID=1\nTAPKEEPER_CHAT_ID=1\nTZ=Europe/Zurich\nTAPKEEPER_MORNING=10:00\nTAPKEEPER_EVENING=20:00\n"
+    )
+    Path(cfg["env_file"]).chmod(0o600)
     Path(cfg["token_file"]).write_text("synthetic-token")
     return cfg
 
@@ -226,6 +231,12 @@ def test_snapshot_retention_and_cleanup_precede_success(config, tmp_path, monkey
                 payload / "backup-config.json"
             ).read_bytes() == config_path.read_bytes()
             assert (payload / "backup.py").exists()
+            assert (payload / "settings.env").read_bytes() == Path(
+                cfg["env_file"]
+            ).read_bytes()
+            assert (payload / "config.json").read_bytes() == Path(
+                cfg["app_config"]
+            ).read_bytes()
 
     monkeypatch.setattr(backup, "restic", restic)
     backup.create_snapshot(config, config_path)
@@ -233,20 +244,27 @@ def test_snapshot_retention_and_cleanup_precede_success(config, tmp_path, monkey
     assert list(Path(config["stage_dir"]).iterdir()) == []
     docker_call = backup.run.call_args_list[1].args[0]
     assert docker_call[docker_call.index("--network") + 1] == "none"
+    assert "--env-file" in docker_call
+    assert "synthetic-token" not in str(docker_call)
+    assert config["token_file"] not in str(docker_call)
     assert docker_call[-2:] == ["backup", "/backup/tapkeeper.db"]
 
 
-def test_config_drift_during_snapshot_fails_closed(config, tmp_path, monkeypatch):
+@pytest.mark.parametrize("field", ["app_config", "env_file", "token_file"])
+def test_config_drift_during_snapshot_fails_closed(
+    config, tmp_path, monkeypatch, field
+):
     (Path(config["data_dir"]) / "tapkeeper.db").write_text("synthetic-db")
     monkeypatch.setattr(backup.os, "chown", Mock())
     monkeypatch.setattr(backup, "restic", Mock())
 
     def run(args, **kwargs):
         if args[:2] == ["docker", "run"]:
-            Path(config["app_config"]).write_text("changed")
+            Path(config[field]).write_text("changed")
         return "[]"
 
     monkeypatch.setattr(backup, "run", run)
+    (tmp_path / "unused").write_text("{}")
     with pytest.raises(ValueError, match="configuration changed"):
         backup.create_snapshot(config, tmp_path / "unused")
     backup.restic.assert_not_called()
@@ -261,3 +279,118 @@ def test_config_rejects_staging_containing_sources(config, tmp_path):
     path.write_text(json.dumps(config))
     with pytest.raises(ValueError, match="Staging must be separate"):
         backup.load_config(path)
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "TAPKEEPER_TOKEN=synthetic-secret",
+        "TAPKEEPER_TOKEN",
+        "OTHER=secret",
+        "TZ=UTC",
+        "export TZ=UTC",
+        "TZ=$HOST_TZ",
+        'TZ="UTC"',
+    ],
+)
+def test_env_file_rejects_secrets_inheritance_and_ambiguous_settings(config, line):
+    path = Path(config["env_file"])
+    path.write_text(path.read_text() + line + "\n")
+    with pytest.raises(ValueError, match="environment file"):
+        backup.read_env_file(path)
+
+
+def test_env_file_requires_private_permissions_and_explicit_scalars(config):
+    path = Path(config["env_file"])
+    path.chmod(0o644)
+    with pytest.raises(ValueError, match="private"):
+        backup.read_env_file(path)
+    path.chmod(0o600)
+    path.write_text("TZ=Europe/Zurich\n")
+    with pytest.raises(ValueError, match="Missing scalar"):
+        backup.read_env_file(path)
+
+
+def test_native_offline_backup_matches_catalogue_environment_and_all_tables(
+    config, tmp_path, monkeypatch
+):
+    import json
+    import os
+    import sqlite3
+    import subprocess
+    import sys
+
+    from tapkeeper.core import Config, Store
+    from test_runtime import NOW
+
+    catalogue = Path(config["app_config"])
+    catalogue.write_text('{"watches":{" exact.ID ":"Synthetic"}}')
+    source = Path(config["data_dir"]) / "tapkeeper.db"
+    store = Store(source, Config.load(catalogue))
+    prompt = store.ensure_prompt("2026-03-29", "morning")
+    store.select("receipt", 1, 1, None, prompt["id"] + ":0", NOW)
+    # Existing historical binding and version must survive the native snapshot.
+    store.connection.execute("UPDATE prompts SET topic=3,chat=-100")
+    store.connection.commit()
+    store.close()
+    operator_config = tmp_path / "operator.json"
+    operator_config.write_text(json.dumps(config))
+    monkeypatch.setattr(backup.os, "chown", Mock())
+
+    def docker(args, **kwargs):
+        if args[:2] != ["docker", "run"]:
+            return "[]"
+        assert args[args.index("--network") + 1] == "none"
+        env_file = Path(args[args.index("--env-file") + 1])
+        assert env_file.read_bytes() == Path(config["env_file"]).read_bytes()
+        settings = dict(
+            line.split("=", 1) for line in env_file.read_text().splitlines()
+        )
+        assert "TAPKEEPER_TOKEN" not in settings
+        assert "TAPKEEPER_TOKEN_FILE" not in settings
+        payload_mount = next(a for a in args if a.endswith(",dst=/backup"))
+        payload = Path(
+            payload_mount.removeprefix("type=bind,src=").removesuffix(",dst=/backup")
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "tapkeeper.cli",
+                "--config",
+                str(catalogue),
+                "--db",
+                str(source),
+                "backup",
+                str(payload / "tapkeeper.db"),
+            ],
+            env={"PATH": os.environ["PATH"], **settings},
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        return result.stdout
+
+    def tables(path):
+        with sqlite3.connect(path) as connection:
+            assert connection.execute("PRAGMA user_version").fetchone() == (1,)
+            return {
+                table: connection.execute(
+                    f"SELECT * FROM {table} ORDER BY rowid"
+                ).fetchall()
+                for table in ("watches", "records", "prompts", "callbacks")
+            }
+
+    def restic(cfg, *args):
+        if args[0] == "backup":
+            payload = Path(args[-1])
+            assert tables(payload / "tapkeeper.db") == tables(source)
+            assert (payload / "settings.env").read_bytes() == Path(
+                cfg["env_file"]
+            ).read_bytes()
+            assert (payload / "config.json").read_bytes() == catalogue.read_bytes()
+            assert (payload / "telegram-token").read_text() == "synthetic-token"
+
+    monkeypatch.setattr(backup, "run", docker)
+    monkeypatch.setattr(backup, "restic", restic)
+    backup.create_snapshot(config, operator_config)

@@ -1,6 +1,5 @@
 """Saved UI is a projection of durable history, never a replay receipt."""
 
-from dataclasses import replace
 from unittest.mock import AsyncMock
 
 from telegram import Update
@@ -22,8 +21,8 @@ class SavedPrompt(Fixture):
         return await self.app.callback(
             key,
             kwargs.get("user", 1),
-            kwargs.get("chat", 2),
-            kwargs.get("topic", 3),
+            kwargs.get("chat", 1),
+            kwargs.get("topic", None),
             kwargs.get("data", self.prompt["id"] + ":" + choice),
             NOW,
             kwargs.get("message_id", self.prompt["message_id"]),
@@ -85,7 +84,7 @@ class SavedPrompt(Fixture):
         self.assertTrue(await self.select("change", "open", topic=None))
         self.assertEqual(before, self.db.export_csv())
         self.fake.edit.reset_mock()
-        self.db.config = replace(self.cfg, topic=4)
+        self.db.connection.execute("UPDATE prompts SET topic=4")
         self.assertFalse(await self.select("change", "open", topic=None))
         self.fake.edit.assert_not_called()
 
@@ -122,15 +121,15 @@ class SavedPrompt(Fixture):
         await self.select()
         evening = self.db.prompt("2026-03-29", "evening")
         await self.app.callback(
-            "same", 1, 2, 3, evening["id"] + ":same", NOW, evening["message_id"]
+            "same", 1, 1, None, evening["id"] + ":same", NOW, evening["message_id"]
         )
         await self.select("1", "correct")
         await self.app.callback(
-            "same", 1, 2, 3, evening["id"] + ":same", NOW, evening["message_id"]
+            "same", 1, 1, None, evening["id"] + ":same", NOW, evening["message_id"]
         )
         self.assertIn("evening: Demo", self.fake.edit.call_args.args[1])
         self.db.backfill("2026-03-30", "morning", "none", NOW.replace(day=30))
-        await self.app.tick(NOW.replace(day=30, hour=7))
+        await self.app.tick(NOW.replace(day=30, hour=8))
         self.assertIn("No watch", self.fake.sent[-1][0])
         self.assertEqual(self.fake.sent[-1][1][0][0], "Change")
 
@@ -220,7 +219,7 @@ class SavedPrompt(Fixture):
                                 "message": {
                                     "message_id": 1,
                                     "date": 1,
-                                    "chat": {"id": 2, "type": "supergroup"},
+                                    "chat": {"id": 1, "type": "private"},
                                 },
                             },
                         },

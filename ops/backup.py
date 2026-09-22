@@ -37,6 +37,7 @@ def load_config(path):
         "password_file",
         "data_dir",
         "app_config",
+        "env_file",
         "token_file",
         "stage_dir",
         "lock_file",
@@ -62,6 +63,7 @@ def load_config(path):
     for field in (
         "data_dir",
         "app_config",
+        "env_file",
         "token_file",
         "repository",
         "password_file",
@@ -129,6 +131,39 @@ def retention_args():
     ]
 
 
+def read_env_file(path):
+    """Validate a literal Docker env-file; Docker, not this operator, loads it."""
+    path = Path(path)
+    if path.stat().st_mode & 0o077:
+        raise ValueError("Environment file must be private")
+    content = path.read_bytes()
+    required = {
+        "TAPKEEPER_USER_ID",
+        "TAPKEEPER_CHAT_ID",
+        "TZ",
+        "TAPKEEPER_MORNING",
+        "TAPKEEPER_EVENING",
+    }
+    allowed = required | {
+        "TAPKEEPER_IMAGE",
+        "TAPKEEPER_CONFIG_FILE",
+        "TAPKEEPER_TOKEN_FILE",
+        "TAPKEEPER_DATA_DIR",
+    }
+    seen = set()
+    for line in content.decode("utf-8").splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        # No shell expansion, quotes, implicit host inheritance or unknown keys.
+        match = re.fullmatch(r"([A-Z_]+)=([^\s\"'$`#]+)", line)
+        if not match or match[1] not in allowed or match[1] in seen:
+            raise ValueError("Invalid Docker environment file")
+        seen.add(match[1])
+    if not required <= seen:
+        raise ValueError("Missing scalar environment settings")
+    return content
+
+
 def create_snapshot(cfg, config_path):
     # A missing source must never silently become a successful empty backup.
     with tempfile.TemporaryDirectory(
@@ -140,6 +175,7 @@ def create_snapshot(cfg, config_path):
         if not source.is_file() or source.stat().st_size == 0:
             raise ValueError("Source database missing")
         app_config = Path(cfg["app_config"]).read_bytes()
+        environment = read_env_file(cfg["env_file"])
         token = Path(cfg["token_file"]).read_bytes()
         if not token.strip():
             raise ValueError("Missing recovery token")
@@ -149,6 +185,10 @@ def create_snapshot(cfg, config_path):
         # source data mount; configuration and the container root stay read-only.
         os.chown(stage, 10001, 10001)
         os.chown(payload, 10001, 10001)
+        # Freeze Docker input so it matches the archived settings exactly.
+        env_path = stage / "settings.env"
+        env_path.write_bytes(environment)
+        env_path.chmod(0o600)
         name = "tapkeeper-backup-" + uuid.uuid4().hex
         try:
             run(
@@ -161,6 +201,8 @@ def create_snapshot(cfg, config_path):
                     "--network",
                     "none",
                     "--read-only",
+                    "--env-file",
+                    str(env_path),
                     "--user",
                     "10001:10001",
                     "--cap-drop",
@@ -186,9 +228,11 @@ def create_snapshot(cfg, config_path):
             run(["docker", "rm", "--force", name], check=False)
         if (
             app_config != Path(cfg["app_config"]).read_bytes()
+            or environment != Path(cfg["env_file"]).read_bytes()
             or token != Path(cfg["token_file"]).read_bytes()
         ):
             raise ValueError("Recovery configuration changed during backup")
+        (payload / "settings.env").write_bytes(environment)
         (payload / "config.json").write_bytes(app_config)
         (payload / "telegram-token").write_bytes(token)
         (payload / "image.json").write_text(image_info)

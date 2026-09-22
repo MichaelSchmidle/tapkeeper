@@ -24,8 +24,7 @@ class CommandRequest(Request):
         message = {
             "message_id": len(self.calls),
             "date": 1,
-            "chat": {"id": 2, "type": "supergroup"},
-            "message_thread_id": 3,
+            "chat": {"id": 1, "type": "private"},
             "document": {
                 "file_id": "synthetic",
                 "file_unique_id": "synthetic-unique",
@@ -34,11 +33,13 @@ class CommandRequest(Request):
         return 200, json.dumps({"ok": True, "result": message}).encode()
 
 
-def command_update(bot, text, user=1, chat=2, topic=3, update_id=10):
+def command_update(
+    bot, text, user=1, chat=1, topic=None, update_id=10, chat_type="private"
+):
     message = {
         "message_id": update_id,
         "date": 1,
-        "chat": {"id": chat, "type": "supergroup"},
+        "chat": {"id": chat, "type": chat_type},
         "text": text,
         "entities": [
             {"type": "bot_command", "offset": 0, "length": len(text.split()[0])}
@@ -71,8 +72,7 @@ class TelegramCommands(Fixture):
                         "message": {
                             "message_id": prompt["message_id"],
                             "date": 1,
-                            "chat": {"id": 2, "type": "supergroup"},
-                            "message_thread_id": 3,
+                            "chat": {"id": 1, "type": "private"},
                         },
                     },
                 },
@@ -135,7 +135,7 @@ class TelegramCommands(Fixture):
                 {"user": 9},
                 {"chat": 9},
                 {"topic": 9},
-                {"topic": None},
+                {"chat_type": "supergroup"},
                 {"user": None},
             ):
                 await app.process_update(

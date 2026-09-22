@@ -18,12 +18,20 @@ SAME_ERROR = '"Same as morning" is unavailable. Please select a watch directly.'
 
 
 def callback_update(
-    bot, prompt, choice="0", key="tap", user=1, chat=2, topic=3, message_id=None
+    bot,
+    prompt,
+    choice="0",
+    key="tap",
+    user=1,
+    chat=1,
+    topic=None,
+    message_id=None,
+    chat_type="private",
 ):
     message = {
         "message_id": prompt["message_id"] if message_id is None else message_id,
         "date": 1,
-        "chat": {"id": chat, "type": "supergroup"},
+        "chat": {"id": chat, "type": chat_type},
     }
     if topic is not None:
         message["message_thread_id"] = topic
@@ -157,7 +165,7 @@ class Safety(Fixture):
             {"user": 9},
             {"chat": 9},
             {"topic": 9},
-            {"topic": None},
+            {"chat_type": "supergroup"},
             {"user": None},
         ):
             for text in ("/export", "/set 2026-03-28 morning none", "/help"):
@@ -174,7 +182,7 @@ class Safety(Fixture):
                         self.assertEqual(self.request.calls, [])
                         self.assertEqual(self.request.uploads, [])
                         self.assertEqual(self.snapshot(), before)
-        # Missing-topic callback recovery is allowed only on the bound message.
+        # Private callbacks on the bound message still project saved history.
         await self.dispatch(choice="change", topic=None)
         self.assertEqual(self.snapshot(), before)
         self.assertTrue(
@@ -186,9 +194,10 @@ class Safety(Fixture):
 
     async def test_reconfigured_identity_cannot_reopen_or_replay_old_prompt(self):
         await self.dispatch(key="saved")
-        before = self.snapshot()
         for field in ("user", "chat", "topic"):
-            self.db.config = replace(self.cfg, **{field: 9})
+            with self.db.connection:
+                self.db.connection.execute(f"UPDATE prompts SET {field}=9")
+            before = self.snapshot()
             for identity in ({}, {field: 9}):
                 for choice in ("0", "1", "change", "same"):
                     with self.subTest(field=field, identity=identity, choice=choice):
@@ -196,4 +205,23 @@ class Safety(Fixture):
                         await self.dispatch(choice=choice, key="saved", **identity)
                         self.assert_alert_only(SELECTION_ERROR)
                         self.assertEqual(self.snapshot(), before)
-        self.db.config = self.cfg
+            with self.db.connection:
+                self.db.connection.execute(
+                    f"UPDATE prompts SET {field}=?", (None if field == "topic" else 1,)
+                )
+        self.db.config = replace(self.cfg, user=9, chat=9)
+        before = self.snapshot()
+        for identity in ({}, {"user": 9, "chat": 9}):
+            await self.dispatch(choice="change", key="saved", **identity)
+            self.assertEqual(self.snapshot(), before)
+
+    async def test_nonprivate_callbacks_cannot_replay_reopen_or_disclose(self):
+        await self.dispatch(key="saved")
+        before = self.snapshot()
+        for chat_type in ("group", "supergroup", "channel"):
+            for choice, key in (("0", "saved"), ("1", "fresh"), ("change", "open")):
+                self.request.calls.clear()
+                await self.dispatch(choice=choice, key=key, chat_type=chat_type)
+                self.assertEqual(self.request.calls, [])
+                self.assertEqual(self.request.uploads, [])
+                self.assertEqual(self.snapshot(), before)
