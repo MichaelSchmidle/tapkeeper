@@ -28,7 +28,7 @@ scheduling and integrity checks. Neither packaging nor installation closes cutov
 
 ## Deployment requirements
 
-- Dedicated bot token, one authorized owner ID, configured chat and optional topic.
+- Dedicated bot token, one authorized owner ID, matching positive private chat ID; no groups/topics.
 - Explicit timezone and morning/evening times; validated catalogue with stable IDs.
 - Private secrets/configuration and durable storage outside the checkout/image.
 - One active polling/scheduling instance; supervision restarts it after failure.
@@ -44,8 +44,8 @@ bot chats are not an end-to-end encrypted storage channel.
 
 ## Backup, upgrade and rollback
 
-Back up the database using a SQLite-consistent mechanism, plus configuration and
-securely handled credentials. Do not assume copying an active database file is a
+Back up the database using a SQLite-consistent mechanism, plus catalogue, scalar environment file and
+securely handled token file. Do not assume copying an active database file is a
 complete backup. Encrypt off-host copies and test restoration in an isolated
 location with Telegram sending disabled. CSV export alone does not restore prompt
 or replay state.

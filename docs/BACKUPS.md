@@ -9,6 +9,28 @@ pulled by digest. Only the offline backup command runs, with container networkin
 disabled; the Telegram token is copied into the encrypted recovery payload but
 never passed to the backup container.
 
+## Scalar settings
+
+Set operator `env_file` to the same private Docker env-file used for Compose
+(`docker compose --env-file /private/settings.env ...`). It must explicitly contain
+`TAPKEEPER_USER_ID`, `TAPKEEPER_CHAT_ID`, `TZ`, `TAPKEEPER_MORNING` and
+`TAPKEEPER_EVENING`; defaults/examples are 10:00/20:00 Europe/Zurich. Do not maintain
+a second scalar JSON source. For Portainer, retain a matching private env-file and
+update it together with stack settings under the backup lock before restarting.
+Do not override these settings through shell environment during deployment.
+
+Use mode 0600 or 0400 and literal Docker `KEY=value` lines: no quotes, expansion,
+inline comments, duplicate keys or implicit host inheritance. Blank lines and full-line
+comments are allowed. Optional deployment keys are `TAPKEEPER_IMAGE`,
+`TAPKEEPER_CONFIG_FILE`, `TAPKEEPER_TOKEN_FILE` (path only), `TAPKEEPER_DATA_DIR`.
+Token contents and all other keys are rejected. Docker loads the file; the operator
+only validates this restricted format, freezes its bytes for `--env-file`, and archives
+it as `settings.env`. It passes no token mount to the offline container. An optional
+token-file path in environment is inaccessible and is never read by offline commands.
+Changes to catalogue, env-file or token during the native snapshot abort before Restic.
+Existing operational installations are unchanged; installation/requalification needs
+separate approval, including adoption of catalogue-only JSON and the matching image.
+
 ## Safety and recovery contract
 
 - One private Restic repository per application. A dedicated NAS account should
@@ -24,14 +46,14 @@ never passed to the backup container.
   fails rather than silently creating an empty source. The native CLI opens the
   source using the normal Store initialization, so its data mount is writable;
   keep its config/image identical to the poller's, and serialize upgrades/config
-  edits with the backup lock. Configuration/token changes during the snapshot
+  edits with the backup lock. Catalogue/environment/token changes during the snapshot
   abort the run. Do not change image/schema while a backup is running.
 - Unique restricted local staging is removed on normal success, error, SIGTERM
   or SIGINT, before success notification. SIGKILL, power loss or filesystem errors
   can leave staging or a disposable container: inspect and clean those deliberately;
   do not blindly delete paths or restart a timer after interrupted recovery work.
 - Payload: native SQLite snapshot (including prompt and replay state), matching
-  application JSON and token, image metadata, operator config/script and optional
+  catalogue JSON, scalar environment file and token, image metadata, operator config/script and optional
   recovery files. Restic/NAS passwords are deliberately not embedded. Protect
   restored payloads: application secrets and monitor push URLs are inside them.
 - Keep 7 daily, 4 weekly and 6 monthly buckets for `tapkeeper-automated`, grouped by
@@ -80,7 +102,7 @@ Keep schedules disabled until all gates pass:
    `sudo /usr/local/sbin/tapkeeper-backup --config /private/test.json backup`.
 3. List the encrypted snapshot, restore with Restic `--verify`, then use the image's
    native `restore` to a fresh database. Compare **every table**, exported CSV,
-   config and token; run `fullcheck`. Remove temporary plaintext and containers.
+   catalogue, environment and token; run `fullcheck`. Remove temporary plaintext and containers.
    Retag a retained rehearsal as `tapkeeper-rehearsal`, removing `tapkeeper-automated`.
 4. Configure separate authenticated HTTPS push monitors, for example backup deadline
    26 hours and checks 9 days, using the existing notification route. Test explicit
@@ -116,7 +138,7 @@ of live state. An isolated rehearsal is not a backup of real history.
 3. Inspect `image.json` and private configuration; pull the exact image digest.
    Use a fresh UID/GID-10001-owned directory, copy in the snapshot, and run the native
    [restore command](CONTAINERS.md#recovery) with `--network none`, a new DB path and
-   matching application JSON. Never run `run` during the drill.
+   matching catalogue JSON and `--env-file` pointing to restored `settings.env`. Never run `run` during the drill.
 4. Verify tables, CSV, config and credentials; verify filesystem permissions. Adapt
    saved host paths and recreate/reset NAS access independently. Rehearse scheduling
    and monitoring before enabling them. Preserve newer writes before an authorized

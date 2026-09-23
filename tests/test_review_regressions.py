@@ -5,7 +5,7 @@ import io
 import json
 import subprocess
 import sys
-from dataclasses import asdict, replace
+from dataclasses import replace
 from pathlib import Path
 
 from telegram import Update
@@ -19,7 +19,7 @@ from test_runtime import Fixture, NOW
 class ReviewRegressions(Fixture):
     def test_cli_csv_preserves_embedded_line_endings(self):
         config = Path(self.tmp.name) / "config.json"
-        config.write_text(json.dumps(asdict(self.cfg)), encoding="utf-8")
+        config.write_text(json.dumps({"watches": self.cfg.watches}), encoding="utf-8")
         row = dict(
             zip(
                 FIELDS,
@@ -93,7 +93,7 @@ class ReviewRegressions(Fixture):
                 )
                 self.assertEqual(self.db.records()[0]["watch_id"], watch_id)
 
-    async def test_missing_topic_requires_exact_persisted_binding(self):
+    async def test_historical_topic_rejected_with_exact_persisted_binding(self):
         request = CommandRequest()
         app = application(self.db, "100:synthetic", request)
         async with app:
@@ -101,14 +101,14 @@ class ReviewRegressions(Fixture):
             prompt = self.db.prompt("2026-03-29", "morning")
 
             async def dispatch(
-                index, user=1, chat=2, message_id=None, topic=None, token=None
+                index, user=1, chat=1, message_id=None, topic=None, token=None
             ):
                 message = {
                     "message_id": prompt["message_id"]
                     if message_id is None
                     else message_id,
                     "date": 0,
-                    "chat": {"id": chat, "type": "supergroup"},
+                    "chat": {"id": chat, "type": "private"},
                 }
                 if topic is not None:
                     message["message_thread_id"] = topic
@@ -142,6 +142,7 @@ class ReviewRegressions(Fixture):
             ):
                 await dispatch(index, **invalid)
                 self.assertEqual(self.db.records(), [])
+            self.db.connection.execute("UPDATE prompts SET topic=3")
             for state, attempts, stored_id in [
                 ("pending", 0, prompt["message_id"]),
                 ("uncertain", 1, None),
@@ -156,7 +157,7 @@ class ReviewRegressions(Fixture):
                 self.assertEqual(self.db.records(), [])
             with self.db.connection:
                 self.db.connection.execute(
-                    "UPDATE prompts SET state='sent',attempts=1,message_id=? WHERE id=?",
+                    "UPDATE prompts SET topic=NULL,state='sent',attempts=1,message_id=? WHERE id=?",
                     (prompt["message_id"], prompt["id"]),
                 )
             await dispatch(20)
@@ -164,6 +165,6 @@ class ReviewRegressions(Fixture):
             before = self.db.export_csv()
             await dispatch(20)
             self.assertEqual(self.db.export_csv(), before)
-            self.db.config = replace(self.cfg, topic=4)
+            self.db.connection.execute("UPDATE prompts SET topic=4")
             await dispatch(21)
             self.assertEqual(self.db.export_csv(), before)

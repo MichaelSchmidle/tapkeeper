@@ -19,13 +19,13 @@ def private_path(value):
 
 
 def load_token():
-    token = os.environ.get("TAPKEEPER_TOKEN")
+    if "TAPKEEPER_TOKEN" in os.environ:
+        raise ValueError("Token must be supplied by file")
     token_file = os.environ.get("TAPKEEPER_TOKEN_FILE")
-    if token is not None and token_file is not None:
-        raise ValueError("Configure exactly one token source")
-    if token_file is not None:
-        token = private_path(token_file).read_text(encoding="utf-8").strip()
-    if not token or not token.strip():
+    if not token_file:
+        raise ValueError("Token file is required")
+    token = private_path(token_file).read_text(encoding="utf-8").strip()
+    if not token:
         raise ValueError("Token is required")
     return token
 
@@ -49,7 +49,16 @@ def main():
     args = parser.parse_args()
     store = None
     try:
-        config = Config.load(private_path(args.config))
+        try:
+            config = Config.load(private_path(args.config))
+        except Exception:
+            print(
+                "Configuration rejected; check catalogue-only JSON, matching positive "
+                "TAPKEEPER_USER_ID/TAPKEEPER_CHAT_ID, TZ, TAPKEEPER_MORNING and "
+                "TAPKEEPER_EVENING. See runtime runbook.",
+                file=sys.stderr,
+            )
+            raise SystemExit(1) from None
         database = private_path(args.db)
         if args.command == "restore":
             Store.restore(private_path(args.file), database)

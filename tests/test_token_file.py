@@ -8,7 +8,7 @@ import pytest
 from tapkeeper.cli import load_token, main
 
 
-def test_token_file_and_legacy_environment(tmp_path, monkeypatch):
+def test_token_file_and_environment_rejection(tmp_path, monkeypatch):
     monkeypatch.delenv("TAPKEEPER_TOKEN", raising=False)
     token = tmp_path / "token"
     token.write_text("synthetic-token\n", encoding="utf-8")
@@ -18,7 +18,8 @@ def test_token_file_and_legacy_environment(tmp_path, monkeypatch):
     with pytest.raises(ValueError):
         load_token()
     monkeypatch.delenv("TAPKEEPER_TOKEN_FILE")
-    assert load_token() == "other-token"
+    with pytest.raises(ValueError):
+        load_token()
 
 
 def test_missing_or_empty_token_fails(tmp_path, monkeypatch):
@@ -41,12 +42,6 @@ def test_cli_token_file_dispatch_and_redacted_failure(tmp_path, monkeypatch, cap
     config.write_text(
         json.dumps(
             {
-                "user": 1,
-                "chat": 2,
-                "topic": None,
-                "timezone": "Europe/Zurich",
-                "morning": "08:00",
-                "evening": "20:00",
                 "watches": {"demo.ref": "Demo"},
             }
         )

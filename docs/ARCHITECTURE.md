@@ -75,8 +75,7 @@ source of truth. No live bidirectional CSV synchronization in v1.
 | History is portable | Synthetic legacy import/export round-trip preserves every record and identifier. |
 | Recovery is real | Restore a backup into isolated storage and reproduce expected records. |
 
-Authorize both the configured Telegram user and destination. A group membership
-check alone is not authorization. Treat callback data as untrusted and bind it
+Authorize both the configured Telegram user and destination. Only private chats with matching positive owner/chat IDs are allowed; any topic is rejected. Treat callback data as untrusted and bind it
 to a known prompt. Secrets must never appear in logs or error messages.
 
 Implemented scheduling policy: one logical prompt per date/slot; on restart send
@@ -91,3 +90,13 @@ uncertainty, bound retries, and ensure duplicate visible prompts cannot corrupt
 or duplicate wear records. Implemented policy: commit uncertainty before each
 send; at most three attempts at least 60 seconds apart, current-day only.
 Operator reconciliation never resets this cap; see [RUNTIME.md](RUNTIME.md).
+
+## Configuration boundary
+
+`Config.load` reads catalogue-only JSON and mandatory `TAPKEEPER_USER_ID`,
+`TAPKEEPER_CHAT_ID`, `TZ`, `TAPKEEPER_MORNING`, `TAPKEEPER_EVENING` from environment.
+There is no dotenv loader or scalar JSON fallback. Validation precedes Store/network
+initialization. The schedule uses only `TZ` (examples: Europe/Zurich, 10:00/20:00).
+The historical `prompts.topic` column and schema v1 remain unchanged; new prompts
+store NULL. Historical group/topic bindings remain unauthorized, without rewriting
+prompts, identifiers, history or receipts. Missing-topic recovery is removed.

@@ -25,17 +25,24 @@ Example **synthetic** JSON structure, saved privately as `$HOME/.config/tapkeepe
 
 ```json
 {
-  "user": 1,
-  "chat": 2,
-  "topic": null,
-  "timezone": "Europe/Zurich",
-  "morning": "08:00",
-  "evening": "20:00",
   "watches": {"synthetic.reference": "Synthetic watch"}
 }
 ```
 
-Replace the synthetic destination before authorized live use. IDs are exact, not
+JSON contains only `watches`; old scalar/topic keys and unknown keys are rejected.
+Export all five scalar settings before **every** CLI command (including offline commands):
+
+```sh
+export TAPKEEPER_USER_ID=1 TAPKEEPER_CHAT_ID=1
+export TZ=Europe/Zurich TAPKEEPER_MORNING=10:00 TAPKEEPER_EVENING=20:00
+```
+
+These IDs are synthetic. Owner and private chat IDs must match positive integers.
+Only private 1:1 chats are supported; groups and topics are rejected. All five values
+are mandatory, with no Python defaults or JSON overrides. `TZ` alone controls local
+dates and scheduling. Compose supplies environment; direct Python does not load `.env`.
+Configuration fails before opening the database or initializing Telegram, with redacted
+advice. Replace the synthetic destination before authorized live use. IDs are exact, not
 normalized; map keys must be unique, nonblank, without control characters, and not
 reserved `none` or `same`. Labels are nonblank, up to 100 characters. Removing an ID
 retires it in SQLite; historical prompts/import remain valid. Never recycle IDs.
@@ -64,8 +71,8 @@ restored database applies its supplied catalogue configuration; retain matching
 configuration for faithful recovery. Stop the old process before replacing its DB.
 Recovery point equals the selected backup; account for all newer writes explicitly.
 
-Only after live authorization, supply token privately in `TAPKEEPER_TOKEN` (never
-in a command argument or checkout) and invoke:
+Only after live authorization, set `TAPKEEPER_TOKEN_FILE` to a private token file (never put token contents
+in environment, arguments or the checkout) and invoke:
 
 ```sh
 uv run --frozen tapkeeper --config "$C" --db "$D" run
@@ -83,7 +90,7 @@ The remainder after date and slot is the exact ID, preserving internal/trailing
 spaces: `/set 2026-03-28 morning demo ref`. To preserve leading spaces or an ID
 starting with a double quote, supply a JSON string, for example
 `/set 2026-03-28 morning " demo ref "`; JSON escapes decode only in this quoted form.
-These are owner AND exact chat/topic restricted. Evening same copies the current
+These are owner AND exact private-chat restricted. Evening same copies the current
 morning snapshot; missing/no-watch morning requires direct selection. A scheduled
 prompt always owns its original local date, with no age expiry. A fresh tap corrects
 that slot; redelivery of the same callback does not change its timestamp. Telegram

@@ -9,13 +9,18 @@ does not operate a service for them or support multiple collectors in one instan
 
 The v1 scope is notify, select, record, correct/backfill, and export. Configuration
 covers the watch catalogue, morning/evening prompt times, timezone and Telegram
-chat/topic destination. Existing history and stable identifiers must migrate
+private 1:1 chat destination. Existing history and stable identifiers must migrate
 without loss. The schema is purpose-built and publicly documented, not tied to
 one person's private catalogue or filesystem.
 
 Non-goals: LLMs, dashboards, valuations, social features, subscriptions, generic
 logging frameworks, and rich collection management. Adding a watch need not
 require code changes; a self-service catalogue editor is not a v1 requirement.
+
+Scalar deployment settings come from environment; the JSON file is catalogue-only.
+The token stays in a private file. Owner and chat IDs must be equal positive integers.
+One timezone and morning/evening schedule apply; examples use 10:00/20:00 Europe/Zurich.
+Group/topic support is out of scope until separately requested.
 
 ## Approved v1 behavior
 
@@ -37,7 +42,7 @@ does not close the saved-prompt UX live milestone below.
 | A previous day's Tapkeeper prompt is tapped | Save for that original date/slot, not today's date; age alone does not expire it. |
 | No usable prompt exists for a past slot | Offer explicit date/slot backfill; exact command syntax is deferred. |
 | Future date or malformed selection | Reject without changing history. |
-| Someone else taps in a shared topic | Reject without changing or disclosing private history. |
+| Someone else or a nonprivate destination submits input | Reject without changing or disclosing private history. |
 | Watch is retired from selection | Retain its identity and history; do not recycle its ID. |
 | Storage fails | Leave choices unchanged; show a dismissible Telegram error alert and allow retry. |
 | Telegram edit/confirmation fails after commit | Keep the saved answer; never call it a failed write. A later tap projects current history. |

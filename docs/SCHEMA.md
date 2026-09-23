@@ -37,14 +37,12 @@ Original selection receipts remain unchanged; UI projections read current record
 not receipt text. There is no schema change or persisted keyboard-open state. Persisted offered order resolves indices; Unicode/long IDs remain exact.
 Known, single-attempt successful sends bind the message ID too. An uncertain send
 may have been visible without a returned ID. After retry, the first message must
-remain usable: durable token + configured and stored user/chat/topic authorization
+remain usable: durable token + configured and stored private user/chat authorization with NULL topic
 are authoritative when attempts exceed one. Duplicate messages cannot produce
 multiple current rows. Retired historical offered choices still resolve.
-When Telegram omits topic metadata, recover it only from an exact persisted
-prompt-token/chat/message-ID match on a non-pending prompt. Current owner and
-configuration plus stored destination checks still apply. An unknown message
-(including an unbound uncertain-send duplicate) cannot use this fallback; use
-backfill if its topic metadata is also unavailable.
+The historical `topic` column remains in schema v1. New prompts store NULL;
+historical topic/group bindings cannot authorize callbacks, including when incoming
+topic metadata is absent. No migration or history rewriting occurs.
 
 ## CSV v1 and explicit legacy path
 

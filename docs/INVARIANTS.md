@@ -6,7 +6,7 @@ new UI live acceptance, migration, deployment and release approval are not impli
 
 | Invariant | Implementation boundary | Regression evidence |
 | --- | --- | --- |
-| Owner AND exact chat/topic AND stored prompt destination | Store.select, Application command handler | test_authorization_invalid_atomic; test_wrong_identity_neither_writes_nor_exports (including missing user); test_destination_change_does_not_send_old_catalogue |
+| Owner AND exact private chat AND stored prompt destination | Store.select, Application command handler | test_authorization_invalid_atomic; test_wrong_identity_neither_writes_nor_exports (including missing user); test_destination_change_does_not_send_old_catalogue |
 | Original date/slot, indefinite old buttons, retired exact IDs | Durable prompts/choices; index callbacks | test_full_restart_correction_snapshot_export; test_retired_prompt_long_exact_id |
 | Unknown/malformed/future input makes no record | Config and Store validation | test_malformed_and_absent_callback; test_authorization_invalid_atomic; test_config_invalid_inputs; test_reject_duplicate_config_keys |
 | One current answer; correction and explicit no-watch | records primary key; upsert | test_full_restart_correction_snapshot_export; Application command tests |
@@ -24,7 +24,7 @@ new UI live acceptance, migration, deployment and release approval are not impli
 | CLI is runnable across process boundaries, export/import exact | installed package entrypoint; CLI subprocesses | test_cli_process_restart_and_backup; isolated installed-wheel import smoke |
 | Redacted actionable uncertainty diagnostics | Adapter diagnostic codes; run disables library logging | test_uncertain_send_diagnostics_are_redacted |
 | CLI imports preserve embedded CRLF/CR and export/reimport stays exact | newline-preserving file reads | test_cli_csv_preserves_embedded_line_endings |
-| Missing callback topic requires exact persisted message binding | Store.select and PTB handler | test_missing_topic_requires_exact_persisted_binding |
+| Historical topic bindings reject even with an exact persisted message binding | Store.select and PTB handler | test_historical_topic_rejected_with_exact_persisted_binding |
 | Telegram backfill preserves whitespace-bearing IDs | Raw command tail and optional JSON string | test_backfill_preserves_exact_whitespace_ids |
 
 ## Saved-prompt UX regressions
@@ -32,7 +32,7 @@ new UI live acceptance, migration, deployment and release approval are not impli
 | Invariant | Regression evidence (`tests/test_saved_prompt.py`) |
 | --- | --- |
 | Change is read-only, keeps saved context and timestamps; restart/replay renders current history while receipts remain original | test_saved_change_replay_restart_projection |
-| Change requires exact owner/destination and durable missing-topic fallback binding | test_change_authorization_and_topic_binding |
+| Change requires exact owner/destination and rejection of historical topic bindings | test_change_authorization_and_topic_binding |
 | Failed writes leave choices and show an alert, never saved feedback | test_failed_write_keeps_choices_and_alerts; test_dispatch_change_alert_and_set_reconciliation |
 | A second connection sees the committed record before edit; failed edit does not become a failed save | test_edit_failure_is_not_write_failure_and_replay_repairs |
 | Real PTB edit/alert dispatch; not-modified is benign; network failures retain history | test_dispatch_change_alert_and_set_reconciliation; test_transport_edit_noop_and_network_failure |
@@ -57,14 +57,14 @@ acceptance or permission to deploy.
 | --- | --- |
 | Storage failure has short retry/storage advice; unavailable “Same as morning” has quoted, direct-selection advice; invalid/unauthorized callbacks disclose no history or raw exception | test_error_copy_distinguishes_storage_domain_and_invalid_selection |
 | A storage failure after resolving “Same as morning” is still a storage error, with no record or receipt committed | test_storage_failure_after_same_resolution_is_not_domain_advice |
-| After store/dispatcher restart, wrong user/chat/topic cannot mutate seeded history, replay a receipt, reopen saved choices, or export; missing command user/topic is rejected; authorized controls still work | test_seeded_history_and_replay_are_private_after_restart |
-| Both old and newly configured identities are rejected on an old prompt after owner/chat/topic changes; records, prompts and receipts remain unchanged | test_reconfigured_identity_cannot_reopen_or_replay_old_prompt |
+| After store/dispatcher restart, wrong user/chat/topic cannot mutate seeded history, replay a receipt, reopen saved choices, or export; missing command user and nonprivate chats are rejected; authorized controls still work | test_seeded_history_and_replay_are_private_after_restart |
+| Historical owner/chat/topic bindings and newly configured private identities reject old prompts; records, prompts and receipts remain unchanged | test_reconfigured_identity_cannot_reopen_or_replay_old_prompt |
 
 The copy assertions failed against the unchanged runtime at `f8fdd2a` before the
 fix. These failures reproduce misleading feedback, **not an authorization bypass**.
-Authorization rules and schema are unchanged. Callbacks retain dismissible alerts;
-commands from unauthorized destinations remain silent. A missing callback topic
-still requires the exact stored message binding; commands have no such fallback.
+At that historical checkpoint, authorization rules and schema were unchanged. Callbacks retain dismissible alerts;
+commands from unauthorized destinations remain silent. That checkpoint retained a missing-topic fallback; the current private-only contract
+removes it and rejects historical topic bindings.
 
 ## Execution record
 
@@ -74,7 +74,7 @@ wrong-destination sending, None callback exception, wrong-message acceptance, an
 first uncertain visible prompt rejection; fixes were followed by passing tests.
 Tests use unittest lifecycle fixtures under pytest; pytest is the canonical runner.
 
-Latest full commands actually executed:
+Historical baseline commands (not validation of the current configuration change):
 
 ```sh
 uv sync --frozen
@@ -104,3 +104,12 @@ Rerun the full suite after corrections and update the evidence when results chan
 - SQLite schema v1 is the first initialization; no upgrade migration from an earlier
   Tapkeeper release exists. Catalogue runtime fields are stable ID and label; richer
   metadata remains outside the runtime, never inferred/normalized from IDs.
+
+## Environment configuration regressions
+
+`test_environment.py` covers mandatory scalars, stale/mixed JSON rejection before
+Store/token loading, matching positive private IDs, exact catalogue keys and schedule.
+The existing DST, replay, authorization, history and transaction suites remain required.
+`test_backup_operator.py` covers env-file inclusion, frozen Docker input, token exclusion,
+three-file drift rejection and native offline SQLite backup with full-table comparison.
+Earlier execution counts above are historical acceptance records, not current gate claims.

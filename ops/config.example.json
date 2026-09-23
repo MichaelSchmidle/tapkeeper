@@ -2,6 +2,7 @@
   "image": "ghcr.io/example/tapkeeper@sha256:REPLACE_WITH_VERIFIED_DIGEST",
   "data_dir": "/srv/tapkeeper/data",
   "app_config": "/srv/tapkeeper/config/config.json",
+  "env_file": "/srv/tapkeeper/config/settings.env",
   "token_file": "/srv/tapkeeper/config/telegram-token",
   "stage_dir": "/srv/tapkeeper/backup-stage",
   "repository": "/mnt/tapkeeper-backup/tapkeeper-restic",

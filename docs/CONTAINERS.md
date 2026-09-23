@@ -36,12 +36,13 @@ must be readable by UID 10001, mode 0400 or equivalently restrictive ACLs; mount
 read-only. Docker user namespace/rootless deployments must map these IDs appropriately.
 
 The CLI supports `TAPKEEPER_TOKEN_FILE` pointing to a UTF-8 token file (a final
-newline is allowed), or the existing `TAPKEEPER_TOKEN` environment variable.
-Setting both is an error. Only `run` loads the token or contacts Telegram; offline
+newline is allowed), with no token contents in environment.
+`TAPKEEPER_TOKEN` is rejected. Only `run` loads the token or contacts Telegram; offline
 commands need neither. Errors remain redacted. Never pass a token in command arguments.
 
-Run one polling/scheduling container, with restart supervision. Configure timezone
-and prompt times in JSON; `TZ` does not override that scheduling configuration.
+Run one polling/scheduling container, with restart supervision. Supply mandatory owner/chat IDs, `TZ` and prompt times through environment;
+JSON contains only the watch catalogue. Compose defaults are Europe/Zurich and
+10:00/20:00; direct CLI callers must export all five values explicitly.
 A running/restarting container is **not** proof of healthy Telegram polling or writes.
 Use logs, offline `status`, and an authorized visible selection/export to verify
 operation. There is deliberately no misleading process-only healthcheck.
@@ -52,7 +53,7 @@ Use the CLI `backup` command (SQLite online backup plus integrity check), not a 
 of a running database file. Restore to a new path with `restore`; never overwrite
 active storage. Keep Telegram disabled (`--network none`, offline command) throughout
 rehearsal. Compare full tables including prompt and replay state as well as CSV.
-Back up the matching JSON and token separately and encrypt off-host copies. Schedule
+Back up the matching catalogue JSON, private Docker env-file and token separately and encrypt off-host copies. Schedule
 backups using the operator's existing backup system; no backup scheduler is installed
 by this image. An optional reviewed [host-side Restic operator](BACKUPS.md) supplies
 scheduling, retention and monitored integrity checks. Agree recovery point/time and

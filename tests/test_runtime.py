@@ -40,10 +40,9 @@ class Fixture(unittest.IsolatedAsyncioTestCase):
         self.path = Path(self.tmp.name) / "state.db"
         self.cfg = Config(
             1,
-            2,
-            3,
+            1,
             "Europe/Zurich",
-            "08:00",
+            "10:00",
             "20:00",
             {"demo.ref": "Demo", "other.ref": "Other"},
         )
@@ -55,7 +54,7 @@ class Fixture(unittest.IsolatedAsyncioTestCase):
         self.db.close()
         self.tmp.cleanup()
 
-    async def tap(self, p, choice="demo.ref", key="a", identity=(1, 2, 3)):
+    async def tap(self, p, choice="demo.ref", key="a", identity=(1, 1, None)):
         return await self.app.callback(
             key,
             *identity,
@@ -88,7 +87,7 @@ class Runtime(Fixture):
     async def test_authorization_invalid_atomic(self):
         await self.app.tick(NOW)
         p = self.db.prompt("2026-03-29", "morning")["id"]
-        for ident in [(9, 2, 3), (1, 9, 3), (1, 2, None)]:
+        for ident in [(9, 1, None), (1, 9, None), (1, 1, 3)]:
             self.assertFalse(await self.tap(p, identity=ident))
         self.assertFalse(await self.tap(p, "unknown"))
         self.assertEqual(self.db.records(), [])

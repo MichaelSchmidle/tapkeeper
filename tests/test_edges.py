@@ -31,7 +31,7 @@ class Edges(Fixture):
 
     async def test_malformed_and_absent_callback(self):
         for data in (None, "", "x", "x:y:z", "unknown:0"):
-            self.assertFalse(await self.app.callback("bad", 1, 2, 3, data, NOW))
+            self.assertFalse(await self.app.callback("bad", 1, 1, None, data, NOW))
         self.assertEqual(self.db.records(), [])
 
     async def test_retired_prompt_long_exact_id(self):
@@ -47,7 +47,7 @@ class Edges(Fixture):
         self.db = Store(self.path, self.cfg)
         self.app = Adapter(self.db, self.fake)
         self.assertTrue(
-            await self.app.callback("old", 1, 2, 3, data, NOW + timedelta(days=2))
+            await self.app.callback("old", 1, 1, None, data, NOW + timedelta(days=2))
         )
         self.assertEqual(self.db.records()[0]["watch_id"], key)
         self.assertEqual(self.db.records()[0]["date"], "2026-03-29")
@@ -55,7 +55,7 @@ class Edges(Fixture):
     async def test_destination_change_does_not_send_old_catalogue(self):
         self.db.ensure_prompt("2026-03-29", "morning")
         self.db.close()
-        self.db = Store(self.path, replace(self.cfg, chat=99))
+        self.db = Store(self.path, replace(self.cfg, user=99, chat=99))
         self.app = Adapter(self.db, self.fake)
         await self.app.tick(NOW)
         self.assertEqual(len(self.fake.sent), 1)
@@ -90,7 +90,7 @@ class Edges(Fixture):
 
     def test_cli_process_restart_and_backup(self):
         config = Path(self.tmp.name) / "config.json"
-        config.write_text(json.dumps(self.cfg.__dict__))
+        config.write_text(json.dumps({"watches": self.cfg.watches}))
         db = Path(self.tmp.name) / "cli.db"
 
         def cli(command, *arguments, database=db):
@@ -156,9 +156,8 @@ class Request(BaseRequest):
             result = {
                 "message_id": len(self.calls),
                 "date": 1,
-                "chat": {"id": 2, "type": "supergroup"},
+                "chat": {"id": 1, "type": "private"},
                 "text": parameters["text"],
-                "message_thread_id": 3,
             }
         else:
             result = True
@@ -191,8 +190,7 @@ class TelegramLifecycle(Fixture):
                                 "message": {
                                     "message_id": message_id,
                                     "date": 1,
-                                    "chat": {"id": 2, "type": "supergroup"},
-                                    "message_thread_id": 3,
+                                    "chat": {"id": 1, "type": "private"},
                                 },
                             },
                         },
