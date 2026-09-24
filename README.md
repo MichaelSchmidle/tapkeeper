@@ -1,5 +1,7 @@
 # Tapkeeper
 
+<img src="assets/tapkeeper-avatar.png" alt="Tapkeeper: a wristwatch with a green checkmark and blue tap symbol" width="240" height="240">
+
 **One tap. On record.**
 
 A self-hosted Telegram watch-wear logger: receive a scheduled check-in,
