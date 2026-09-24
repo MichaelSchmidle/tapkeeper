@@ -11,12 +11,14 @@ docker build -t tapkeeper:check .
 docker run --rm --network none --read-only tapkeeper:check --help
 ```
 
-PR/main builds do not publish. After review and merge, the repository owner may
-push a version tag such as `v0.1.0`. The image workflow publishes
-`ghcr.io/<lowercase-owner>/tapkeeper:v0.1.0` and `sha-<full-commit>`.
-No `latest` tag is used. This documentation does not assert a release exists.
-Inspect the resulting manifest and record its digest; deployments must use
-`ghcr.io/<lowercase-owner>/tapkeeper@sha256:<actual-digest>` rather than a mutable tag.
+Passing main-branch builds publish `ghcr.io/<lowercase-owner>/tapkeeper:latest`
+and `sha-<full-commit>`. PR builds test only and never publish. Owner-pushed version
+tags such as `v0.1.0` publish that version and its commit tag without moving `latest`.
+Stacksmith follows the moving `latest` tag for rolling updates; the deployment
+manager controls pull/redeploy timing. This deliberately accepts occasional breaking
+updates in exchange for less version-bump maintenance. Record the running image digest
+for backup/rollback; offline recovery must use the snapshot's exact image, not whatever
+`latest` points to later.
 Verify an authenticated pull (or configure GHCR package public visibility if intended)
 before handing the image to a deployment manager. Package permissions and first
 registry publication remain release-time checks. Tagging is not deployment permission.

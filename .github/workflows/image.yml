@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   image:
     runs-on: ubuntu-latest
@@ -28,21 +32,27 @@ jobs:
           uv run --frozen ruff format --check .
       - name: Build and check image
         run: |
-          docker build --tag tapkeeper:check .
+          docker build --label "org.opencontainers.image.revision=$GITHUB_SHA" --tag tapkeeper:check .
           docker run --rm --network none --read-only tapkeeper:check --help
-      - name: Publish owner-tagged version
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish image
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ github.ref_name }}
           REPOSITORY: ${{ github.repository }}
           REVISION: ${{ github.sha }}
+          REF: ${{ github.ref }}
         run: |
           set -eu
           image="ghcr.io/${REPOSITORY,,}"
-          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]
+          if [[ "$REF" == refs/heads/main ]]; then
+            tag=latest
+          else
+            [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]
+            tag="$VERSION"
+          fi
           printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
-          docker tag tapkeeper:check "$image:$VERSION"
           docker tag tapkeeper:check "$image:sha-$REVISION"
-          docker push "$image:$VERSION"
           docker push "$image:sha-$REVISION"
+          docker tag tapkeeper:check "$image:$tag"
+          docker push "$image:$tag"

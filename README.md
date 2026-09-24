@@ -27,7 +27,8 @@ end-to-end encrypted bot conversations.
 ## Container packaging
 
 Build/release and non-root operation are documented in [CONTAINERS.md](docs/CONTAINERS.md).
-PR builds do not publish images; owner-authorized release and deployment remain separate.
+Passing main builds publish `latest`; PR builds do not publish. Image publication
+and deployment remain separate.
 
 ## Project documents
 
