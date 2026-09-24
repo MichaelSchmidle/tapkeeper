@@ -139,12 +139,12 @@ def read_env_file(path):
     content = path.read_bytes()
     required = {
         "TAPKEEPER_USER_ID",
-        "TAPKEEPER_CHAT_ID",
         "TZ",
         "TAPKEEPER_MORNING",
         "TAPKEEPER_EVENING",
     }
     allowed = required | {
+        "TAPKEEPER_CHAT_ID",  # Obsolete; tolerated in old env-files, ignored by runtime.
         "TAPKEEPER_IMAGE",
         "TAPKEEPER_CONFIG_FILE",
         "TAPKEEPER_TOKEN_FILE",

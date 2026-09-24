@@ -13,7 +13,7 @@ never passed to the backup container.
 
 Set operator `env_file` to the same private Docker env-file used for Compose
 (`docker compose --env-file /private/settings.env ...`). It must explicitly contain
-`TAPKEEPER_USER_ID`, `TAPKEEPER_CHAT_ID`, `TZ`, `TAPKEEPER_MORNING` and
+`TAPKEEPER_USER_ID`, `TZ`, `TAPKEEPER_MORNING` and
 `TAPKEEPER_EVENING`; defaults/examples are 10:00/20:00 Europe/Zurich. Do not maintain
 a second scalar JSON source. For Portainer, retain a matching private env-file and
 update it together with stack settings under the backup lock before restarting.
@@ -23,7 +23,9 @@ Use mode 0600 or 0400 and literal Docker `KEY=value` lines: no quotes, expansion
 inline comments, duplicate keys or implicit host inheritance. Blank lines and full-line
 comments are allowed. Optional deployment keys are `TAPKEEPER_IMAGE`,
 `TAPKEEPER_CONFIG_FILE`, `TAPKEEPER_TOKEN_FILE` (path only), `TAPKEEPER_DATA_DIR`.
-Token contents and all other keys are rejected. Docker loads the file; the operator
+Obsolete `TAPKEEPER_CHAT_ID` entries are tolerated for existing env-files but ignored
+by the runtime; the owner ID determines the private destination. Token contents and
+all other keys are rejected. Docker loads the file; the operator
 only validates this restricted format, freezes its bytes for `--env-file`, and archives
 it as `settings.env`. It passes no token mount to the offline container. An optional
 token-file path in environment is inaccessible and is never read by offline commands.

@@ -28,7 +28,7 @@ scheduling and integrity checks. Neither packaging nor installation closes cutov
 
 ## Deployment requirements
 
-- Dedicated bot token, one authorized owner ID, matching positive private chat ID; no groups/topics.
+- Dedicated bot token, one positive authorized owner ID (also the private chat destination); no groups/topics.
 - Explicit timezone and morning/evening times; validated catalogue with stable IDs.
 - Private secrets/configuration and durable storage outside the checkout/image.
 - One active polling/scheduling instance; supervision restarts it after failure.

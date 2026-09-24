@@ -42,9 +42,9 @@ newline is allowed), with no token contents in environment.
 `TAPKEEPER_TOKEN` is rejected. Only `run` loads the token or contacts Telegram; offline
 commands need neither. Errors remain redacted. Never pass a token in command arguments.
 
-Run one polling/scheduling container, with restart supervision. Supply mandatory owner/chat IDs, `TZ` and prompt times through environment;
+Run one polling/scheduling container, with restart supervision. Supply the mandatory owner ID (also the private chat destination), `TZ` and prompt times through environment;
 JSON contains only the watch catalogue. Compose defaults are Europe/Zurich and
-10:00/20:00; direct CLI callers must export all five values explicitly.
+10:00/20:00; direct CLI callers must export all four values explicitly.
 A running/restarting container is **not** proof of healthy Telegram polling or writes.
 Use logs, offline `status`, and an authorized visible selection/export to verify
 operation. There is deliberately no misleading process-only healthcheck.

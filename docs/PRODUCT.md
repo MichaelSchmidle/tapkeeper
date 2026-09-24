@@ -18,7 +18,8 @@ logging frameworks, and rich collection management. Adding a watch need not
 require code changes; a self-service catalogue editor is not a v1 requirement.
 
 Scalar deployment settings come from environment; the JSON file is catalogue-only.
-The token stays in a private file. Owner and chat IDs must be equal positive integers.
+The token stays in a private file. The positive owner ID also determines the private
+chat destination; there is no separate chat-ID setting.
 One timezone and morning/evening schedule apply; examples use 10:00/20:00 Europe/Zurich.
 Group/topic support is out of scope until separately requested.
 

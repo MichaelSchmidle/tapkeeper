@@ -94,7 +94,9 @@ Operator reconciliation never resets this cap; see [RUNTIME.md](RUNTIME.md).
 ## Configuration boundary
 
 `Config.load` reads catalogue-only JSON and mandatory `TAPKEEPER_USER_ID`,
-`TAPKEEPER_CHAT_ID`, `TZ`, `TAPKEEPER_MORNING`, `TAPKEEPER_EVENING` from environment.
+`TZ`, `TAPKEEPER_MORNING`, `TAPKEEPER_EVENING` from environment. The private chat
+destination is derived from the owner ID; sender and chat authorization remain
+separate checks. Obsolete `TAPKEEPER_CHAT_ID` values are ignored.
 There is no dotenv loader or scalar JSON fallback. Validation precedes Store/network
 initialization. The schedule uses only `TZ` (examples: Europe/Zurich, 10:00/20:00).
 The historical `prompts.topic` column and schema v1 remain unchanged; new prompts

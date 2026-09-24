@@ -30,15 +30,16 @@ Example **synthetic** JSON structure, saved privately as `$HOME/.config/tapkeepe
 ```
 
 JSON contains only `watches`; old scalar/topic keys and unknown keys are rejected.
-Export all five scalar settings before **every** CLI command (including offline commands):
+Export all four scalar settings before **every** CLI command (including offline commands):
 
 ```sh
-export TAPKEEPER_USER_ID=1 TAPKEEPER_CHAT_ID=1
+export TAPKEEPER_USER_ID=1
 export TZ=Europe/Zurich TAPKEEPER_MORNING=10:00 TAPKEEPER_EVENING=20:00
 ```
 
-These IDs are synthetic. Owner and private chat IDs must match positive integers.
-Only private 1:1 chats are supported; groups and topics are rejected. All five values
+This owner ID is synthetic and must be a positive integer. The private chat destination
+is derived from it; obsolete `TAPKEEPER_CHAT_ID` values are ignored and may be removed.
+Only private 1:1 chats are supported; groups and topics are rejected. All four values
 are mandatory, with no Python defaults or JSON overrides. `TZ` alone controls local
 dates and scheduling. Compose supplies environment; direct Python does not load `.env`.
 Configuration fails before opening the database or initializing Telegram, with redacted

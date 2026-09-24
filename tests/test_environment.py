@@ -11,7 +11,6 @@ from tapkeeper.core import Config, due_time
 
 SETTINGS = {
     "TAPKEEPER_USER_ID": "1",
-    "TAPKEEPER_CHAT_ID": "1",
     "TZ": "Europe/Zurich",
     "TAPKEEPER_MORNING": "10:00",
     "TAPKEEPER_EVENING": "20:00",
@@ -96,11 +95,27 @@ def test_stale_json_rejected(catalogue, monkeypatch, capsys, extra):
     assert_cli_rejects(catalogue, monkeypatch, capsys)
 
 
-@pytest.mark.parametrize("value", ["0", "-1", "2", "1.0", "true", "+1", " 1", "١"])
-def test_private_destination_required(catalogue, monkeypatch, value):
-    monkeypatch.setenv("TAPKEEPER_CHAT_ID", value)
+@pytest.mark.parametrize("value", ["0", "-1", "1.0", "true", "+1", " 1", "١"])
+def test_positive_owner_required(catalogue, monkeypatch, value):
+    monkeypatch.setenv("TAPKEEPER_USER_ID", value)
     with pytest.raises(ValueError):
         Config.load(catalogue)
+
+
+@pytest.mark.parametrize("user", ["2", "9876543210"])
+def test_chat_is_derived_from_owner(catalogue, monkeypatch, user):
+    monkeypatch.setenv("TAPKEEPER_USER_ID", user)
+    config = Config.load(catalogue)
+    assert config.user == config.chat == int(user)
+
+
+@pytest.mark.parametrize("legacy_chat", ["1", "2", "-100123", "invalid", ""])
+def test_obsolete_chat_setting_cannot_redirect_destination(
+    catalogue, monkeypatch, legacy_chat
+):
+    monkeypatch.setenv("TAPKEEPER_CHAT_ID", legacy_chat)
+    config = Config.load(catalogue)
+    assert config.user == config.chat == 1
 
 
 def test_duplicate_catalogue_keys_rejected(catalogue):

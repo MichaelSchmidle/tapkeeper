@@ -53,8 +53,8 @@ def main():
             config = Config.load(private_path(args.config))
         except Exception:
             print(
-                "Configuration rejected; check catalogue-only JSON, matching positive "
-                "TAPKEEPER_USER_ID/TAPKEEPER_CHAT_ID, TZ, TAPKEEPER_MORNING and "
+                "Configuration rejected; check catalogue-only JSON, positive "
+                "TAPKEEPER_USER_ID, TZ, TAPKEEPER_MORNING and "
                 "TAPKEEPER_EVENING. See runtime runbook.",
                 file=sys.stderr,
             )

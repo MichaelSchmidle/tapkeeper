@@ -195,7 +195,7 @@ def config(tmp_path):
     Path(cfg["data_dir"]).mkdir()
     Path(cfg["app_config"]).write_text("{}")
     Path(cfg["env_file"]).write_text(
-        "TAPKEEPER_USER_ID=1\nTAPKEEPER_CHAT_ID=1\nTZ=Europe/Zurich\nTAPKEEPER_MORNING=10:00\nTAPKEEPER_EVENING=20:00\n"
+        "TAPKEEPER_USER_ID=1\nTZ=Europe/Zurich\nTAPKEEPER_MORNING=10:00\nTAPKEEPER_EVENING=20:00\n"
     )
     Path(cfg["env_file"]).chmod(0o600)
     Path(cfg["token_file"]).write_text("synthetic-token")
@@ -298,6 +298,13 @@ def test_env_file_rejects_secrets_inheritance_and_ambiguous_settings(config, lin
     path.write_text(path.read_text() + line + "\n")
     with pytest.raises(ValueError, match="environment file"):
         backup.read_env_file(path)
+
+
+def test_env_file_accepts_single_identity_and_legacy_extra(config):
+    path = Path(config["env_file"])
+    assert b"TAPKEEPER_CHAT_ID" not in backup.read_env_file(path)
+    path.write_text(path.read_text() + "TAPKEEPER_CHAT_ID=1\n")
+    assert backup.read_env_file(path) == path.read_bytes()
 
 
 def test_env_file_requires_private_permissions_and_explicit_scalars(config):

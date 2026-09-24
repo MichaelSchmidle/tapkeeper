@@ -103,9 +103,10 @@ class Config:
                 raise ValueError(f"Invalid {name}")
             return int(value)
 
+        user = identity("TAPKEEPER_USER_ID")
         return cls(
-            user=identity("TAPKEEPER_USER_ID"),
-            chat=identity("TAPKEEPER_CHAT_ID"),
+            user=user,
+            chat=user,
             timezone=required("TZ"),
             morning=required("TAPKEEPER_MORNING"),
             evening=required("TAPKEEPER_EVENING"),
